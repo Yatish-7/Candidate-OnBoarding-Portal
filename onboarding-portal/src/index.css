@@ -1,0 +1,258 @@
+/* antd styles itself (see src/theme.js); these are a few global polish touches. */
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================================
+   Keyframes
+   ============================================================ */
+@keyframes oi-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes oi-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes oi-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes oi-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes oi-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.07);
+  }
+}
+
+/* Entrance helpers (one-shot) */
+.oi-fade-up {
+  animation: oi-fade-up 0.6s ease both;
+}
+.oi-pop {
+  animation: oi-pop 0.5s ease both;
+}
+.oi-delay-1 {
+  animation-delay: 0.08s;
+}
+.oi-delay-2 {
+  animation-delay: 0.16s;
+}
+.oi-delay-3 {
+  animation-delay: 0.24s;
+}
+.oi-delay-4 {
+  animation-delay: 0.32s;
+}
+
+/* Animated atom logo: each orbit ring spins on its own */
+.oi-atom {
+  animation: oi-float 6s ease-in-out infinite;
+}
+.oi-orbit {
+  transform-origin: 24px 24px;
+  animation: oi-spin 16s linear infinite;
+}
+.oi-orbit-2 {
+  animation-duration: 11s;
+  animation-direction: reverse;
+}
+.oi-orbit-3 {
+  animation-duration: 20s;
+}
+
+/* ============================================================
+   Landing page (public) — clean, light, brand-tinted
+   ============================================================ */
+.oi-landing {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(900px 440px at 14% -5%, rgba(43, 76, 155, 0.1), transparent 60%),
+    radial-gradient(760px 440px at 88% 8%, rgba(28, 159, 217, 0.08), transparent 60%),
+    radial-gradient(720px 520px at 72% 108%, rgba(225, 53, 42, 0.06), transparent 60%),
+    #f7f9fc;
+}
+
+/* Hero logo: a soft, slowly pulsing glow behind a gently floating company logo */
+.oi-logo-stage {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 22px;
+}
+.oi-logo-glow {
+  position: absolute;
+  inset: -14% -4%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(43, 76, 155, 0.2),
+    rgba(225, 53, 42, 0.1) 55%,
+    transparent 76%
+  );
+  filter: blur(16px);
+  animation: oi-pulse 5s ease-in-out infinite;
+}
+.oi-logo-float {
+  position: relative;
+  animation: oi-float 5.5s ease-in-out infinite;
+}
+
+/* Landing feature cards */
+.oi-feature {
+  flex: 1 1 240px;
+  max-width: 280px;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #e8edf3;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+}
+.oi-feature:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
+  border-color: #bfdbfe;
+}
+.oi-feature-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+/* ============================================================
+   Cards: soft shadow at rest, a gentle lift on hover
+   ============================================================ */
+.ant-card {
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 1px 3px rgba(15, 23, 42, 0.06);
+  transition:
+    box-shadow 0.22s ease,
+    transform 0.22s ease,
+    border-color 0.22s ease;
+}
+.ant-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.1),
+    0 2px 6px rgba(15, 23, 42, 0.05);
+}
+
+/* Buttons: subtle lift + press feedback */
+.ant-btn {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+.ant-btn:not(.ant-btn-text):not(.ant-btn-link):hover {
+  transform: translateY(-1px);
+}
+.ant-btn:active {
+  transform: translateY(0);
+}
+
+/* Tables: smooth row hover; clickable rows get a pointer */
+.ant-table-tbody > tr > td {
+  transition: background 0.15s ease;
+}
+.clickable-row {
+  cursor: pointer;
+}
+/* Audit log drawer: fields that changed in this revision */
+.oi-audit-changed > td {
+  background: #fffbeb !important;
+  font-weight: 500;
+}
+
+/* Sidebar menu: nudge items right on hover */
+.ant-menu-item {
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    padding-inline 0.18s ease;
+}
+.ant-menu-inline .ant-menu-item:hover {
+  padding-inline-start: 28px !important;
+}
+
+/* Links */
+a {
+  transition: color 0.15s ease;
+}
+
+/* Dashboard statistic cards lift a touch */
+.ant-statistic {
+  transition: transform 0.2s ease;
+}
+
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  .oi-atom,
+  .oi-orbit,
+  .oi-fade-up,
+  .oi-pop,
+  .oi-logo-float,
+  .oi-logo-glow {
+    animation: none !important;
+  }
+  .ant-card:hover,
+  .ant-btn:hover,
+  .oi-feature:hover {
+    transform: none;
+  }
+}

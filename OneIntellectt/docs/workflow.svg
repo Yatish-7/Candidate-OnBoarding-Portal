@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 560" font-family="Segoe UI, Inter, Arial, sans-serif">
+  <title>One Intellectt — candidate workflow</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/></marker>
+    <style>
+      .n { fill:#eff6ff; stroke:#3b82f6; stroke-width:1.6; }
+      .g { fill:#ecfdf5; stroke:#10b981; stroke-width:1.6; }
+      .x { fill:#fef2f2; stroke:#dc2626; stroke-width:1.6; }
+      .o { fill:#fef3c7; stroke:#f59e0b; stroke-width:1.6; }
+      .st { fill:#f1f5f9; stroke:#64748b; stroke-width:1.6; }
+      .h { font-size:14px; font-weight:700; fill:#0f172a; }
+      .t { font-size:12px; fill:#334155; }
+      .l { font-size:11px; fill:#1e293b; font-weight:600; }
+      .lr { font-size:11px; fill:#b91c1c; font-weight:600; }
+      .ln { stroke:#475569; stroke-width:1.8; fill:none; marker-end:url(#a); }
+      .lx { stroke:#dc2626; stroke-width:1.8; fill:none; marker-end:url(#r); }
+    </style>
+  </defs>
+  <rect width="1180" height="560" fill="#fff"/>
+  <text x="30" y="36" style="font-size:20px;font-weight:700;fill:#0f172a">Candidate workflow — states and transitions</text>
+
+  <!-- main row -->
+  <rect x="20" y="80" width="150" height="70" rx="10" class="st"/>
+  <text x="34" y="106" class="h">Recruiter submits</text><text x="34" y="124" class="t">intake form,</text><text x="34" y="138" class="t">DOJ may be given</text>
+
+  <rect x="215" y="80" width="170" height="70" rx="10" class="n"/>
+  <text x="229" y="104" class="h">Pending approval</text><text x="229" y="122" class="t">Sales Lead OR Sales</text><text x="229" y="136" class="t">Manager (either one)</text>
+
+  <rect x="430" y="80" width="165" height="70" rx="10" class="n"/>
+  <text x="444" y="104" class="h">HR + Contracts</text><text x="444" y="122" class="t">review in parallel</text><text x="444" y="136" class="t">both must approve</text>
+
+  <rect x="640" y="80" width="170" height="70" rx="10" class="n"/>
+  <text x="654" y="104" class="h">Payroll + Accounts</text><text x="654" y="122" class="t">review in parallel</text><text x="654" y="136" class="t">both must approve</text>
+
+  <rect x="855" y="80" width="140" height="70" rx="10" class="g"/>
+  <text x="869" y="104" class="h">Completed</text><text x="869" y="122" class="t">"Awaiting DOJ"</text><text x="869" y="136" class="t">all four approved</text>
+
+  <rect x="1030" y="80" width="130" height="70" rx="10" class="g"/>
+  <text x="1044" y="104" class="h">Joined</text><text x="1044" y="122" class="t">DOJ approved by</text><text x="1044" y="136" class="t">Lead or Manager</text>
+
+  <path d="M170 115 L213 115" class="ln"/>
+  <path d="M385 115 L428 115" class="ln"/><text x="388" y="106" class="l">approve</text>
+  <path d="M595 115 L638 115" class="ln"/><text x="596" y="106" class="l">both ok</text>
+  <path d="M810 115 L853 115" class="ln"/><text x="812" y="106" class="l">both ok</text>
+  <path d="M995 115 L1028 115" class="ln"/>
+
+  <!-- project end -->
+  <rect x="1000" y="215" width="170" height="64" rx="10" class="g"/>
+  <text x="1014" y="240" class="h">Project end date</text><text x="1014" y="258" class="t">recruiter raises it;</text><text x="1014" y="272" class="t">Lead / Mgr / SA decide</text>
+  <path d="M1095 150 L1095 213" class="ln"/>
+  <rect x="1000" y="330" width="170" height="52" rx="10" class="g"/>
+  <text x="1014" y="354" class="h">Exited</text><text x="1014" y="372" class="t">when the date is approved</text>
+  <path d="M1095 279 L1095 328" class="ln"/><text x="1103" y="308" class="l">approve</text>
+
+  <!-- returned -->
+  <rect x="430" y="250" width="380" height="70" rx="10" class="x"/>
+  <text x="444" y="276" class="h">Returned to Sales Lead / Manager</text>
+  <text x="444" y="294" class="t">HR, Contracts, Payroll or Accounts declined (comment required)</text>
+  <text x="444" y="308" class="t">HR may also revise to a decline until the DOJ is approved</text>
+  <path d="M540 150 L540 248" class="lx"/><text x="548" y="206" class="lr">decline</text>
+  <path d="M725 150 L725 248" class="lx"/><text x="733" y="206" class="lr">decline</text>
+  <path d="M455 250 L455 152" class="ln" style="stroke-dasharray:6 4"/><text x="448" y="214" class="l" text-anchor="end">re-route (only the</text><text x="448" y="228" class="l" text-anchor="end">declined team redoes it)</text>
+
+  <!-- SL declined -->
+  <rect x="215" y="250" width="170" height="70" rx="10" class="x"/>
+  <text x="229" y="276" class="h">Declined</text><text x="229" y="294" class="t">by Sales Lead / Manager</text><text x="229" y="308" class="t">comment required, final</text>
+  <path d="M300 150 L300 248" class="lx"/><text x="308" y="206" class="lr">decline</text>
+
+  <!-- override -->
+  <rect x="215" y="380" width="780" height="80" rx="10" class="o"/>
+  <text x="229" y="406" class="h">Super Admin override (any stage, final; can be changed later)</text>
+  <text x="229" y="426" class="t">Override approved: HR, Contracts, Payroll and Accounts all marked approved.   Override rejected: candidate ends.</text>
+  <text x="229" y="444" class="t">Every decision, rate change and project end date is on the approval trail, in the audit history, and emailed.</text>
+  <path d="M600 380 L600 322" class="ln" style="stroke-dasharray:6 4"/>
+
+  <!-- legend -->
+  <text x="30" y="500" class="t">Visibility: Recruiter own · Sales Lead own team · Sales Manager all their teams · HR / Contracts past the first approval ·</text>
+  <text x="30" y="518" class="t">Payroll / Accounts only after HR AND Contracts approve · Admin none · Super Admin all.   Rates can be changed by Lead / Manager / Super Admin at any time (comment required).</text>
+  <text x="30" y="536" class="t">HR can edit a candidate's details at any time. Every action is emailed to everyone in the loop, with a View candidate button.</text>
+</svg>

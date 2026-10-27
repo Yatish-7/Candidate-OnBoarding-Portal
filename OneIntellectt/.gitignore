@@ -1,0 +1,74 @@
+# ---- Secrets (passwords, JWT signing key, SSN encryption key, mail password) - never commit ----
+secrets.properties
+secrets-*.properties
+application-local.properties
+application-*-secrets.properties
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# ---- Database backups and dumps (they hold password hashes and personal data) ----
+# (the versioned migration scripts in docs/*.sql ARE committed; only dumps are ignored)
+db-backups/
+**/Intellectt_*.sql
+*.dump
+*.backup
+*.bak
+
+# ---- Build output ----
+target/
+build/
+out/
+
+# ---- Logs (the security log holds sign-in events) ----
+logs/
+*.log
+
+# ---- Load test: generated test accounts (they include passwords) and local virtual env ----
+load-test/accounts.json
+load-test/.venv/
+load-test/venv/
+
+# ---- Python ----
+__pycache__/
+*.pyc
+
+# ---- IDE and editor files ----
+.classpath
+.project
+.factorypath
+.settings/
+.apt_generated/
+.apt_generated_tests/
+.springBeans
+.sts4-cache/
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+nbproject/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# ---- OS files ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Office / editor temp files ----
+~$*
+*.tmp
+*.swp
+*~
+
+# ---- Claude Code local settings ----
+.claude/settings.local.json
+CLAUDE.local.md

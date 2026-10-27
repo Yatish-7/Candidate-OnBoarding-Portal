@@ -1,0 +1,28 @@
+
+# Eclipse workspace metadata
+.metadata/
+
+# Root-level database backups
+/db-backups/
+
+# Secrets and environment files anywhere in the project
+**/.env
+**/.env.*
+!**/.env.example
+
+# Generated Java build output
+**/target/
+
+# Generated frontend dependencies and builds
+**/node_modules/
+**/dist/
+**/build/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# IDE and OS files
+.idea/
+.DS_Store
+Thumbs.db
