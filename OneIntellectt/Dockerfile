@@ -7,16 +7,15 @@ COPY pom.xml .
 COPY src ./src
 
 RUN mvn -B -DskipTests clean package \
-    && JAR_FILE="$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*.original' | head -n 1)" \
-    && test -n "$JAR_FILE" \
-    && cp "$JAR_FILE" /app/application.jar
+    && test -f target/OneIntellectt-0.0.1-SNAPSHOT.war \
+    && cp target/OneIntellectt-0.0.1-SNAPSHOT.war /app/application.war
 
 FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
-COPY --from=build /app/application.jar /app/application.jar
+COPY --from=build /app/application.war /app/application.war
 
 EXPOSE 5000
 
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "/app/application.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "/app/application.war"]
