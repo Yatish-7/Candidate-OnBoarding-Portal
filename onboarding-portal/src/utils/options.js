@@ -32,6 +32,21 @@ export const RECRUITER_LOCATION_OPTIONS = ['Hyderabad', 'Vijayawada', 'Banglore'
 export const PAYROLL_OTHER = 'Other'
 export const PAYROLL_COMPANY_OPTIONS = [...INTERNAL_ENTITY_OPTIONS, { value: PAYROLL_OTHER, label: 'Other…' }]
 
+// The 50 US states and DC, for the client state. Must match US_STATES in the backend (CandidateServiceImpl).
+export const US_STATE_OPTIONS = [
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
+  'Colorado', 'Connecticut', 'Delaware', 'District of Columbia', 'Florida',
+  'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana',
+  'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine',
+  'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi',
+  'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire',
+  'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota',
+  'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island',
+  'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah',
+  'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin',
+  'Wyoming',
+].map((state) => ({ value: state, label: state }))
+
 export const EMPLOYMENT_TYPE_OPTIONS = ['W2', 'C2C', 'Full-time', 'Self'].map((type) => ({ value: type, label: type }))
 
 // Our own companies a candidate can be placed with: the internal entities plus Intellectt and

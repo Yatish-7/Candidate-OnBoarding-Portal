@@ -524,4 +524,31 @@ class SalesManagerApiTest extends ApiTestSupport {
         Res trail = get("/api/candidates/" + id + "/trail", lead);
         assertEquals("APPROVE_PROJECT_END", trail.body().get(trail.body().size() - 1).path("actionType").asText());
     }
+
+    @Test
+    @DisplayName("Client state must be a US state; the work authorization expiry is optional and HR can add it later")
+    void clientStateAndWorkAuthorization() {
+        String sa = admin();
+        TeamSetup ts = newTeam(sa);
+        String rec = login(ts.recruiter());
+        String lead = login(ts.lead());
+        String hr = login(createUser(sa, "HR", null));
+
+        assertEquals(400, post("/api/candidates", rec, Map.of("candidateName", "X", "clientState", "Narnia")).status());
+        assertEquals(400, post("/api/candidates", rec, Map.of("candidateName", "X", "clientState", "TX")).status()); // full names
+        for (String state : new String[] { "Texas", "District of Columbia", "New Hampshire" }) {
+            long ok = submitCandidate(rec, Map.of("clientState", state));
+            assertEquals(state, candidate(ok, rec).path("clientState").asText());
+        }
+
+        // submitted without a work authorization expiry...
+        long id = submitCandidate(rec, Map.of("visaStatus", "H1B"));
+        assertTrue(candidate(id, rec).path("workAuthorizationExpDate").isNull());
+        // ...HR fills it in later
+        act(id, "sales-lead/approve", lead, null);
+        Res edited = put("/api/candidates/" + id, hr, Map.of("candidateName", candidate(id, rec).path("candidateName").asText(),
+                "visaStatus", "H1B", "workAuthorizationExpDate", "2028-03-31"));
+        assertEquals(200, edited.status());
+        assertEquals("2028-03-31", edited.text("workAuthorizationExpDate"));
+    }
 }

@@ -89,7 +89,10 @@ export default function CandidateSections({ candidate: c }) {
     ...(c.visaStatus === 'H1 Transfer'
       ? [{ label: 'H1 transfer details', children: c.h1TransferDetails || '—', span: 'filled' }]
       : []),
-    { label: 'Work authorization expires', children: formatDate(c.workAuthorizationExpDate) },
+    {
+      label: 'Work authorization expires',
+      children: c.workAuthorizationExpDate ? formatDate(c.workAuthorizationExpDate) : 'Not provided yet (HR can add it)',
+    },
     { label: 'Relocation expenses', children: c.relocationExpenses || '—' },
     { label: 'Existing employee', children: labelFor(YES_NO_OPTIONS, c.existingEmployee) },
     { label: 'Referral', children: c.referral || '—' },

@@ -224,6 +224,8 @@ superadmin@<domain>). Both are in the normal position now.
 - The API only validates choices (employment type, team type, placement company, shared team, referral amount).
 - **Recruiter location** is not typed: an admin sets `users.location` for each recruiter (Users page) and the server copies it
   onto every candidate (`recruiterLocation` in a request is ignored). A recruiter without one can't submit from the form.
+- Client state is a dropdown of the 50 US states + DC (full names; `US_STATES` in `CandidateServiceImpl` and `US_STATE_OPTIONS` in `options.js`).
+  Work authorization expiry is optional (HR can add it later via Edit details).
 - CC company is mandatory when the employment type is C2C (form rule). "Internal Entity" was renamed **Placement Entity** (UI, emails,
   docs); the field is still `internalEntity` in code and the database.
 - Placement companies = the placement entities + Intellectt + NewMEK Software Solutions (`PLACEMENT_COMPANIES` / `options.js`).

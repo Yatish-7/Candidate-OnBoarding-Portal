@@ -138,7 +138,8 @@ Roles: `RECRUITER`, `SALES_LEAD`, `HR`, `CONTRACTS`, `PAYROLL`, `ACCOUNTS`, `ADM
   "visaStatus": "H1B", "workAuthorizationExpDate": "2028-01-01", "relocationExpenses": "…",
   "payCycle": "BI_WEEKLY", "existingEmployee": false, "jobDescription": "…",
   "dojDate": "2026-12-01",
-  "sourcingRecruiter": "…", "sourcingRecruiterLead": "…", "clientState": "Texas", "clientLocation": "Dallas", "employmentType": "C2C",   // W2 | C2C | Full-time | Self (else 400)
+  "sourcingRecruiter": "…", "sourcingRecruiterLead": "…", "clientState": "Texas",   // one of the 50 US states or "District of Columbia" (full name), else 400
+   "clientLocation": "Dallas", "employmentType": "C2C",   // W2 | C2C | Full-time | Self (else 400)
   "payrollCompany": "kennedysoft", "payrollCompanyOther": null,   // optional: one of the ten entities, or "Other" + a name
   "internalCompanyPlacement": true, "placementCompany": "NewMEK Software Solutions",   // company required when true
   "sharedPlacement": true, "sharedWithTeam": { "id": 3 },   // team required when true

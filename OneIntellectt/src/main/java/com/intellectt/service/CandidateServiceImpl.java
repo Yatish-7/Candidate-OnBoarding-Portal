@@ -56,6 +56,18 @@ public class CandidateServiceImpl implements CandidateService {
     static final List<String> RECRUITER_LOCATIONS = List.of("Hyderabad", "Vijayawada", "Banglore", "Indore",
             "Noida", "USA");
 
+    /** The 50 US states and DC for the client state (keep in step with options.js). */
+    static final List<String> US_STATES = List.of(
+            "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+            "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia", "Hawaii",
+            "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
+            "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+            "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+            "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
+            "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+            "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+            "West Virginia", "Wisconsin", "Wyoming");
+
     /** Team types in the form's radio buttons (keep in step with options.js). */
     static final List<String> TEAM_TYPES = List.of("SALES", "REQ", "BOTH");
 
@@ -1047,6 +1059,9 @@ public class CandidateServiceImpl implements CandidateService {
 
     /** The dropdown-backed fields must hold one of the allowed choices (and the "if yes, which?" parts). */
     private void checkIntakeChoices(Candidate in) {
+        if (!isBlank(in.getClientState()) && !US_STATES.contains(in.getClientState())) {
+            throw new BadRequestException("Client state must be a US state");
+        }
         if (!isBlank(in.getEmploymentType()) && !EMPLOYMENT_TYPES.contains(in.getEmploymentType())) {
             throw new BadRequestException("Employment type must be one of: " + String.join(", ", EMPLOYMENT_TYPES));
         }

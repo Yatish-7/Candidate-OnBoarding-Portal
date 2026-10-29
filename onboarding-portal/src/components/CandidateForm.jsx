@@ -26,9 +26,9 @@ import {
   PAY_CYCLE_OPTIONS,
   PAYROLL_COMPANY_OPTIONS,
   PLACEMENT_COMPANY_OPTIONS,
+  US_STATE_OPTIONS,
   TEAM_TYPE_OPTIONS,
   VISA_STATUS_OPTIONS,
-  VISAS_WITHOUT_EXPIRY,
   YES_NO_OPTIONS,
 } from '../utils/options.js'
 
@@ -80,16 +80,6 @@ const EXPIRY_AFTER_START = ({ getFieldValue }) => ({
       return Promise.reject(new Error('Must be after the start date'))
     }
     return Promise.resolve()
-  },
-})
-
-// Work authorization expiry is needed unless the visa never expires (US Citizen, Green Card)
-const EXPIRY_REQUIRED = ({ getFieldValue }) => ({
-  validator(_, expiry) {
-    if (expiry || VISAS_WITHOUT_EXPIRY.includes(getFieldValue('visaStatus'))) {
-      return Promise.resolve()
-    }
-    return Promise.reject(new Error('Choose the work authorization expiry'))
   },
 })
 
@@ -272,8 +262,8 @@ export default function CandidateForm({
               </Form.Item>
             </Col>
             <Col {...COL}>
-              <Form.Item name="clientState" label="Client state" rules={[required('the client state')]}>
-                <Input placeholder="e.g. Texas" />
+              <Form.Item name="clientState" label="Client state" rules={[chosen('the client state')]}>
+                <Select options={US_STATE_OPTIONS} placeholder="Select a state" showSearch optionFilterProp="label" />
               </Form.Item>
             </Col>
             <Col {...COL}>
@@ -436,9 +426,10 @@ export default function CandidateForm({
             <Col {...COL}>
               <Form.Item
                 name="workAuthorizationExpDate"
-                label="Work authorization expiry"
-                dependencies={['startDate', 'visaStatus']}
-                rules={[EXPIRY_REQUIRED, EXPIRY_AFTER_START]}
+                label="Work authorization expiry (optional)"
+                dependencies={['startDate']}
+                rules={[EXPIRY_AFTER_START]}
+                extra="Can be left empty: HR can fill it in later"
               >
                 <DatePicker format="DD MMM YYYY" style={{ width: '100%' }} />
               </Form.Item>
