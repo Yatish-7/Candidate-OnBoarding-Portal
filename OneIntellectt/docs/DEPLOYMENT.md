@@ -181,6 +181,7 @@ proxy must overwrite it; with `native` it is trusted only from private/local add
 - [ ] Transactional email provider with SPF/DKIM; `MAIL_FROM` on your domain
 - [ ] nginx passes `X-Forwarded-For`
 - [ ] `app.entity-mail.mailbox-routing=true` and `app.entity-mail.super-admin-address` blank (the testing switches are in the normal position)
+- [ ] The frontend host serves `index.html` for every path (nginx `try_files`; Netlify / Cloudflare `_redirects`; Vercel `vercel.json`; Render Static Site: add a Rewrite rule `/*` → `/index.html`), so email links to `/login` never show "page not found"
 - [ ] Backups scheduled and a restore tested
 - [ ] SQL migrations from `docs/` applied, in order, on the production database (after a backup): `sales-manager-migration.sql`, `payroll-accounts-migration.sql`, `project-end-migration.sql`, `rate-change-migration.sql`, `candidate-edit-migration.sql`, `project-end-approval-migration.sql`, `dropout-doj-migration.sql` (this one adds columns: the app validates the schema and will not start without them)
 - [ ] Super Admin password changed; MFA plan agreed (not built yet)

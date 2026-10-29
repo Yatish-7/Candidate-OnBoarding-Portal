@@ -240,9 +240,8 @@ listed twice. The same entity, "Other" or none → the Placement Entity only (`C
 Entity → domain and role → mailbox mappings are configuration
 (`app.entity-mail.*`, bound by `EntityMailProperties`). For a blank or unknown entity,
 emails fall back to the active portal users holding those roles. Each email is one
-HTML message, with the SSN masked, and ends with a **View candidate** button that opens `/candidates/{id}` in the portal
-(`app.frontend.base-url`); if the person isn't signed in they sign in first and are sent straight to that candidate, where their
-Approve / Decline buttons are. Sending is asynchronous on the `mailExecutor`
+HTML message, with the SSN masked, and ends with a **View candidate** button that opens the portal's **sign-in page** (`app.frontend.base-url` + `/login`, a page that can be
+opened directly without an account); the person signs in and opens the candidate from their list, where their Approve / Decline buttons are. Sending is asynchronous on the `mailExecutor`
 pool (4–10 threads, queue of 5000). If the queue is full, the email is dropped and
 logged; the approval is never affected.
 

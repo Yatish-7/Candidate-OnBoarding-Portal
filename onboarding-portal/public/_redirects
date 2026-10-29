@@ -1,0 +1,2 @@
+# Netlify / Cloudflare Pages: serve the app for every path, so /login and any other direct link works
+/*    /index.html   200

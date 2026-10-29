@@ -94,7 +94,7 @@ class WorkflowEmailApiTest extends ApiTestSupport {
         assertTrue(people.getValue().stream().anyMatch(u -> u.getEmail().equals(ts.recruiter().email())),
                 "the recruiter must get the approval email");
         assertTrue(body.getValue().contains("View candidate"));
-        assertTrue(body.getValue().contains("/candidates/" + approved + "\""), "the button must open this candidate");
+        assertTrue(body.getValue().contains("/login\""), "the button must open the sign-in page");
         clearInvocations(emailService);
 
         // decline
@@ -105,7 +105,7 @@ class WorkflowEmailApiTest extends ApiTestSupport {
                 people2.capture(), org.mockito.ArgumentMatchers.contains("declined candidate"), body2.capture());
         assertTrue(people2.getValue().stream().anyMatch(u -> u.getEmail().equals(ts.recruiter().email())),
                 "the recruiter must get the decline email");
-        assertTrue(body2.getValue().contains("/candidates/" + declined + "\""));
+        assertTrue(body2.getValue().contains("/login\""));
     }
 
     @Test
@@ -134,7 +134,7 @@ class WorkflowEmailApiTest extends ApiTestSupport {
         Set<String> to = people.getValue().stream().map(User::getEmail).collect(java.util.stream.Collectors.toSet());
         assertEquals(Set.of(ts.lead().email(), manager.email()), to);
         assertEquals(Set.of(Role.HR), Set.copyOf(rolesRaise.getValue()));
-        assertTrue(body.getValue().contains("/candidates/" + id + "\""), "the button opens the candidate");
+        assertTrue(body.getValue().contains("/login\""), "the button opens the sign-in page");
         clearInvocations(emailService);
 
         // the Sales Manager approves: everyone is told, still waiting for HR

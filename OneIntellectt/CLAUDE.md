@@ -211,7 +211,7 @@ the frontend repeats it in `utils/emailDomains.js` (keep both lists in step). Th
 - Tests: `SalesManagerApiTest`.
 
 ## 6c. Email flow (26 Oct 2026)
-Every candidate email ends with a "View candidate" button → `<app.frontend.base-url>/candidates/{id}` (login returns to it).
+Every candidate email ends with a "View candidate" button → `<app.frontend.base-url>/login` (the sign-in page; no candidate id in the link). The frontend host must serve `index.html` for every path (`public/_redirects`, `vercel.json`; nginx `try_files`; on Render add a Rewrite `/*` → `/index.html`), or direct links show the host's "page not found".
 Submit → team's Sales Lead + Sales Manager only · Sales Lead/Manager approve → HR, Contracts, Payroll AND Accounts mailboxes (+ Super Admin)
 the *other* approver and the recruiter (Payroll/Accounts get the email but only see the candidate after HR and Contracts both approve) ·
 each HR approval and each Contracts approval → all four mailboxes (+ Super Admin) · all four approved → Sales Lead,

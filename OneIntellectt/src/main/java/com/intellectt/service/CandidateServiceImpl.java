@@ -49,7 +49,7 @@ public class CandidateServiceImpl implements CandidateService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final TeamRepository teamRepository;
-    /** Where the portal lives; the "View candidate" button in emails points at it. */
+    /** Where the portal lives; the "View candidate" button in emails opens its sign-in page ({@code /login}). */
     private final String frontendBaseUrl;
 
     /** The offices a recruiter can work from (the form's dropdown; keep in step with options.js). */
@@ -1353,11 +1353,11 @@ public class CandidateServiceImpl implements CandidateService {
                 + "<thead><tr><th colspan=\"2\" style=\"text-align:left;background:#4f46e5;color:#ffffff;"
                 + "padding:12px 16px;font-size:15px;letter-spacing:.3px\">Candidate Details</th></tr></thead>"
                 + "<tbody>" + rows + "</tbody></table>"
-                + "<p style=\"margin:20px 0 0\"><a href=\"" + esc(frontendBaseUrl + "/candidates/" + c.getId())
+                + "<p style=\"margin:20px 0 0\"><a href=\"" + esc(frontendBaseUrl + "/login")
                 + "\" style=\"display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;"
                 + "font-weight:600;padding:12px 22px;border-radius:8px\">View candidate</a></p>"
-                + "<p style=\"margin:8px 0 0;color:#94a3b8;font-size:12px\">Opens this candidate in the portal "
-                + "(sign in first if asked).</p>"
+                + "<p style=\"margin:8px 0 0;color:#94a3b8;font-size:12px\">Opens the portal sign-in page: "
+                + "sign in, then open this candidate from your list.</p>"
                 + "<p style=\"margin:16px 0 0;color:#94a3b8;font-size:12px\">Current status: "
                 + esc(String.valueOf(c.getStatus())) + " &middot; One Intellectt — Candidate Onboarding</p>"
                 + "</div>";
