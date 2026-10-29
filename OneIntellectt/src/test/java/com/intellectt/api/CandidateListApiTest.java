@@ -68,7 +68,7 @@ class CandidateListApiTest extends ApiTestSupport {
         act(joined, "sales-lead/approve", lead, null);
         act(joined, "hr/approve", hr, null);
         act(joined, "contracts/approve", contracts, null);
-        act(joined, "doj/approve", lead, null);
+        approveDojBoth(joined, lead, hr);
 
         long declined = submitCandidate(rec);
         act(declined, "sales-lead/approve", lead, null);

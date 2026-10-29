@@ -96,6 +96,10 @@ class SalesManagerApiTest extends ApiTestSupport {
         assertEquals(400, act(id, "doj/approve", m, null).status()); // approve the candidate first
         assertEquals(200, act(id, "sales-lead/approve", m, null).status());
         assertEquals(200, act(id, "doj/approve", m, null).status());
+        // HR must approve the DOJ too
+        assertEquals("RAISED", candidate(id, m).path("dojStatus").asText());
+        String hrT = login(createUser(sa, "HR", null));
+        assertEquals(200, act(id, "doj/approve", hrT, null).status());
         assertEquals("APPROVED", candidate(id, m).path("dojStatus").asText());
     }
 
@@ -309,7 +313,7 @@ class SalesManagerApiTest extends ApiTestSupport {
     }
 
     @Test
-    @DisplayName("Project end date: the recruiter raises it after the DOJ is approved; Lead / Manager / Super Admin approve or decline")
+    @DisplayName("Project end date: raised by the recruiter after the DOJ; BOTH the Lead / Manager and HR must approve")
     void projectEndDate() {
         String sa = admin();
         TeamSetup ts = newTeam(sa);
@@ -318,13 +322,14 @@ class SalesManagerApiTest extends ApiTestSupport {
         String rec = login(ts.recruiter());
         String lead = login(ts.lead());
         String m = login(manager);
+        String hr = login(createUser(sa, "HR", null));
         long id = submitCandidate(rec); // DOJ 2026-12-01 from intake
 
         // nothing can be raised before the DOJ is approved
         assertEquals(400, act(id, "project-end?date=2027-06-30", rec, null).status());
         assertEquals(400, act(id, "project-end?date=2027-06-30", lead, null).status());
         act(id, "sales-lead/approve", lead, null);
-        act(id, "doj/approve", lead, null);
+        approveDojBoth(id, lead, hr);
 
         assertEquals(400, act(id, "project-end?date=2026-11-30", rec, null).status()); // before the DOJ
         assertEquals(400, act(id, "project-end?date=not-a-date", rec, null).status());
@@ -341,22 +346,29 @@ class SalesManagerApiTest extends ApiTestSupport {
         // the recruiter can't approve it; a decline needs a comment
         assertEquals(403, act(id, "project-end/approve", rec, null).status());
         assertEquals(400, act(id, "project-end/decline", lead, null).status());
-        assertEquals(200, act(id, "project-end/decline", lead, "Wrong date").status());
+        assertEquals(200, act(id, "project-end/decline", hr, "Wrong date").status()); // HR may decline too
         assertEquals("DECLINED", candidate(id, rec).path("projectEndStatus").asText());
         assertTrue(!listContains(get("/api/candidates?status=EXITED", lead), id));
 
-        // raised again, the Sales Manager approves: now the candidate has exited
+        // raised again: the Sales Manager approves, but that is only one of the two approvals
         assertEquals(200, act(id, "project-end?date=2027-07-31", rec, null).status());
         assertEquals(200, act(id, "project-end/approve", m, null).status());
-        JsonNode done = candidate(id, rec);
-        assertEquals("APPROVED", done.path("projectEndStatus").asText());
+        assertEquals("RAISED", candidate(id, rec).path("projectEndStatus").asText());
+        assertEquals(400, act(id, "project-end/approve", lead, null).status()); // the Lead side has already approved
+        assertTrue(!listContains(get("/api/candidates?status=EXITED", lead), id));
+        // HR approves: now it is approved and the candidate has exited
+        assertEquals(200, act(id, "project-end/approve", hr, null).status());
+        assertEquals("APPROVED", candidate(id, rec).path("projectEndStatus").asText());
         assertTrue(listContains(get("/api/candidates?status=EXITED", lead), id));
-        // once approved the recruiter can't change it; the Lead can
+
+        // once approved the recruiter can't change it; a new date from the Lead restarts the approvals
         assertEquals(400, act(id, "project-end?date=2027-09-30", rec, null).status());
         assertEquals(200, act(id, "project-end?date=2027-09-30", lead, null).status());
-        assertEquals("2027-09-30", candidate(id, m).path("projectEndDate").asText());
-        Res trail = get("/api/candidates/" + id + "/trail", lead);
-        assertEquals("SET_PROJECT_END", trail.body().get(trail.body().size() - 1).path("actionType").asText());
+        JsonNode changed = candidate(id, m);
+        assertEquals("2027-09-30", changed.path("projectEndDate").asText());
+        assertEquals("RAISED", changed.path("projectEndStatus").asText());
+        assertEquals(200, act(id, "project-end/approve", hr, null).status());
+        assertEquals("APPROVED", candidate(id, m).path("projectEndStatus").asText());
     }
 
     /** Calls POST /rates with the given query (e.g. "billRate=90") and an optional comment. */
@@ -494,15 +506,16 @@ class SalesManagerApiTest extends ApiTestSupport {
     }
 
     @Test
-    @DisplayName("An approved project end date (Lead, Manager or Super Admin) makes the candidate Exited")
+    @DisplayName("Once the Lead / Manager and HR have approved the project end date the candidate is Exited")
     void exited() {
         String sa = admin();
         TeamSetup ts = newTeam(sa);
         String rec = login(ts.recruiter());
         String lead = login(ts.lead());
+        String hr = login(createUser(sa, "HR", null));
         long id = submitCandidate(rec);
         act(id, "sales-lead/approve", lead, null);
-        act(id, "doj/approve", lead, null);
+        approveDojBoth(id, lead, hr);
 
         JsonNode before = get("/api/candidates/summary", lead).body();
         assertEquals(1, before.path("joined").asInt());
@@ -514,7 +527,7 @@ class SalesManagerApiTest extends ApiTestSupport {
         assertEquals(1, get("/api/candidates/summary", lead).body().path("joined").asInt());
         assertEquals(0, get("/api/candidates/summary", lead).body().path("exited").asInt());
 
-        // the Super Admin approves it
+        // the Super Admin's approval settles it alone
         assertEquals(200, act(id, "project-end/approve", sa, null).status());
         JsonNode after = get("/api/candidates/summary", lead).body();
         assertEquals(0, after.path("joined").asInt()); // no longer counted as joined

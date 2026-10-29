@@ -45,6 +45,12 @@ public interface CandidateService {
     /** Sales Lead / Manager / Super Admin approve or decline a project end date the recruiter raised (decline needs a comment). */
     Candidate decideProjectEnd(Long id, User actor, boolean approve, String comment);
 
+    /**
+     * Drop out / back out after the DOJ is approved: the Sales Lead / Manager, HR, Contracts, Payroll, Accounts
+     * or the Super Admin can mark the candidate as having left (comment required). Everyone in the loop is emailed.
+     */
+    Candidate dropOut(Long id, User actor, String comment);
+
     Candidate hrDecision(Long id, User actor, boolean approve, String comment);
 
     Candidate contractsDecision(Long id, User actor, boolean approve, String comment);
@@ -58,7 +64,7 @@ public interface CandidateService {
      * narrowed by a search term and a display-status key (e.g. "PENDING_HR").
      * Returns {content, totalElements, totalPages, number, size}.
      */
-    Map<String, Object> search(User actor, String search, String status, int page, int size);
+    Map<String, Object> search(User actor, String search, String status, boolean dojToday, int page, int size);
 
     /** Dashboard counters {pending, approved, declined, joined} over the visible candidates. */
     Map<String, Long> summary(User actor);

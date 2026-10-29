@@ -63,7 +63,7 @@ class NewFeatureSecurityApiTest extends ApiTestSupport {
 
         candidateId = submitCandidate(tokens.get("RECRUITER"), Map.of("billRate", "100", "payRate", "70"));
         act(candidateId, "sales-lead/approve", tokens.get("SALES_LEAD"), null);
-        act(candidateId, "doj/approve", tokens.get("SALES_LEAD"), null);
+        approveDojBoth(candidateId, tokens.get("SALES_LEAD"), tokens.get("HR"));
         clearInvocations(emailService);
     }
 
@@ -112,22 +112,27 @@ class NewFeatureSecurityApiTest extends ApiTestSupport {
     }
 
     @Test
-    @DisplayName("Project end date: only the owner recruiter raises it; only Lead / Manager / Super Admin decide")
+    @DisplayName("Project end date: recruiter / Lead / Manager / HR / Super Admin enter it; Lead, Manager, HR and Super Admin decide")
     void projectEndRoles() {
-        // raising: the candidate's recruiter, or an approver (which approves it directly)
-        refuseEveryoneExcept("raise project end", List.of("RECRUITER", "SALES_LEAD", "SALES_MANAGER", "SUPER_ADMIN"),
+        // raising: the candidate's recruiter, or an approver (which counts as their own approval)
+        refuseEveryoneExcept("raise project end", List.of("RECRUITER", "SALES_LEAD", "SALES_MANAGER", "HR", "SUPER_ADMIN"),
                 t -> post("/api/candidates/" + candidateId + "/project-end?date=2027-06-30", t, null));
         assertEquals(200, post("/api/candidates/" + candidateId + "/project-end?date=2027-06-30",
                 tokens.get("RECRUITER"), null).status());
 
         // deciding
-        List<String> deciders = List.of("SALES_LEAD", "SALES_MANAGER", "SUPER_ADMIN");
+        List<String> deciders = List.of("SALES_LEAD", "SALES_MANAGER", "HR", "SUPER_ADMIN");
         refuseEveryoneExcept("approve project end", deciders,
                 t -> post("/api/candidates/" + candidateId + "/project-end/approve", t, null));
         refuseEveryoneExcept("decline project end", deciders,
                 t -> post("/api/candidates/" + candidateId + "/project-end/decline?comment=no", t, null));
+        // BOTH the Sales Lead / Manager and HR must approve
         assertEquals(200, post("/api/candidates/" + candidateId + "/project-end/approve",
                 tokens.get("SALES_MANAGER"), null).status());
+        assertEquals("RAISED", candidate(candidateId, tokens.get("RECRUITER")).path("projectEndStatus").asText());
+        assertEquals(200, post("/api/candidates/" + candidateId + "/project-end/approve",
+                tokens.get("HR"), null).status());
+        assertEquals("APPROVED", candidate(candidateId, tokens.get("RECRUITER")).path("projectEndStatus").asText());
         // already decided: nobody can approve it a second time
         assertEquals(400, post("/api/candidates/" + candidateId + "/project-end/approve",
                 tokens.get("SUPER_ADMIN"), null).status());
@@ -233,5 +238,112 @@ class NewFeatureSecurityApiTest extends ApiTestSupport {
         assertTrue(c.path("recruiterLocation").isNull() || !"USA".equals(c.path("recruiterLocation").asText()));
         // the SSN is never in a response
         assertTrue(c.path("ssnNo").isMissingNode());
+    }
+
+    // ------------------------------------------------------------------ DOJ approvals, drop out, joining today
+
+    @Test
+    @DisplayName("Only the Sales Lead / Manager and HR approve the DOJ; nobody else")
+    void dojApprovalRoles() {
+        long id = submitCandidate(tokens.get("RECRUITER"));
+        act(id, "sales-lead/approve", tokens.get("SALES_LEAD"), null);
+        refuseEveryoneExcept("approve the DOJ", List.of("SALES_LEAD", "SALES_MANAGER", "HR"),
+                t -> post("/api/candidates/" + id + "/doj/approve", t, null));
+        assertEquals(200, post("/api/candidates/" + id + "/doj/approve", tokens.get("SALES_MANAGER"), null).status());
+        // the same side can't approve twice, and one side alone doesn't approve it
+        assertEquals(400, post("/api/candidates/" + id + "/doj/approve", tokens.get("SALES_LEAD"), null).status());
+        assertEquals("RAISED", candidate(id, tokens.get("RECRUITER")).path("dojStatus").asText());
+        assertEquals(200, post("/api/candidates/" + id + "/doj/approve", tokens.get("HR"), null).status());
+        assertEquals("APPROVED", candidate(id, tokens.get("RECRUITER")).path("dojStatus").asText());
+    }
+
+    @Test
+    @DisplayName("Drop out: the recruiter, Admin and other teams are refused; the loop's roles can record it")
+    void dropOutRoles() {
+        refuseEveryoneExcept("drop out", List.of("SALES_LEAD", "SALES_MANAGER", "HR", "CONTRACTS", "PAYROLL", "ACCOUNTS", "SUPER_ADMIN"),
+                t -> post("/api/candidates/" + candidateId + "/drop-out?comment=x", t, null));
+        // another team's Sales Lead (a role that is allowed in general) is refused for this candidate
+        assertEquals(403, post("/api/candidates/" + candidateId + "/drop-out?comment=x", tokens.get("SL2"), null).status());
+        // a reason is required
+        assertEquals(400, post("/api/candidates/" + candidateId + "/drop-out", tokens.get("CONTRACTS"), null).status());
+        assertEquals(200, post("/api/candidates/" + candidateId + "/drop-out?comment=left", tokens.get("CONTRACTS"), null).status());
+        assertEquals("DROPPED_OUT", candidate(candidateId, tokens.get("RECRUITER")).path("status").asText());
+    }
+
+    @Test
+    @DisplayName("The joining-today filter is a real boolean: injection text is rejected")
+    void dojTodayParameter() {
+        String lead = tokens.get("SALES_LEAD");
+        assertEquals(400, get("/api/candidates?dojToday=" + enc("true' OR '1'='1"), lead).status());
+        assertEquals(400, get("/api/candidates?dojToday=" + enc("1; DROP TABLE candidates"), lead).status());
+        assertEquals(200, get("/api/candidates?dojToday=true", lead).status());
+        assertEquals(200, get("/api/candidates?dojToday=false", lead).status());
+        assertEquals(200, get("/api/candidates/" + candidateId, lead).status()); // nothing was dropped
+    }
+
+    @Test
+    @DisplayName("A request can't set the approval flags or statuses (DOJ, project end date, drop out)")
+    void approvalFlagsCannotBeForced() {
+        long id = submitCandidate(tokens.get("RECRUITER"), Map.of("dojDate", "2026-12-01"));
+        act(id, "sales-lead/approve", tokens.get("SALES_LEAD"), null);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("candidateName", "Forged approvals");
+        body.put("dojDate", "2026-12-01");
+        body.put("dojLeadApproved", true);
+        body.put("dojHrApproved", true);
+        body.put("dojStatus", "APPROVED");
+        body.put("projectEndLeadApproved", true);
+        body.put("projectEndHrApproved", true);
+        body.put("projectEndStatus", "APPROVED");
+        body.put("status", "DROPPED_OUT");
+        // as HR (who may edit) ...
+        JsonNode c = put("/api/candidates/" + id, tokens.get("HR"), body).body();
+        assertFalse(c.path("dojLeadApproved").asBoolean());
+        assertFalse(c.path("dojHrApproved").asBoolean());
+        assertEquals("RAISED", c.path("dojStatus").asText());
+        assertFalse(c.path("projectEndLeadApproved").asBoolean());
+        assertFalse(c.path("projectEndHrApproved").asBoolean());
+        assertEquals("NOT_RAISED", c.path("projectEndStatus").asText());
+        assertEquals("IN_HR_CONTRACTS_REVIEW", c.path("status").asText());
+        // ... and on submit, as the recruiter
+        Map<String, Object> submit = new LinkedHashMap<>();
+        submit.put("candidateName", "Forged on submit");
+        submit.put("dojDate", "2026-12-01");
+        submit.put("dojLeadApproved", true);
+        submit.put("dojHrApproved", true);
+        submit.put("dojStatus", "APPROVED");
+        submit.put("projectEndStatus", "APPROVED");
+        submit.put("status", "DROPPED_OUT");
+        JsonNode created = post("/api/candidates", tokens.get("RECRUITER"), submit).body();
+        assertFalse(created.path("dojLeadApproved").asBoolean());
+        assertEquals("RAISED", created.path("dojStatus").asText());
+        assertEquals("NOT_RAISED", created.path("projectEndStatus").asText());
+        assertEquals("PENDING_SALES_LEAD_APPROVAL", created.path("status").asText());
+    }
+
+    @Test
+    @DisplayName("Script tags in a drop-out reason are escaped in the email")
+    @SuppressWarnings("unchecked")
+    void xssInDropOutEmail() {
+        String payload = "<script>alert(1)</script>";
+        clearInvocations(emailService);
+        assertEquals(200, post("/api/candidates/" + candidateId + "/drop-out?comment=" + enc(payload),
+                tokens.get("HR"), null).status());
+        ArgumentCaptor<String> bodies = ArgumentCaptor.forClass(String.class);
+        verify(emailService, atLeastOnce()).notifyStage(ArgumentMatchers.<Collection<String>>any(),
+                ArgumentMatchers.<Collection<Role>>any(), ArgumentMatchers.<Collection<User>>any(), anyString(), bodies.capture());
+        for (String body : bodies.getAllValues()) {
+            assertFalse(body.contains("<script>"), "raw <script> in an email");
+        }
+        assertTrue(bodies.getAllValues().stream().anyMatch(b -> b.contains("&lt;script&gt;")));
+    }
+
+    @Test
+    @DisplayName("The new endpoints need a sign-in (drop out, DOJ approval)")
+    void newEndpointsNeedSignIn() {
+        assertEquals(401, post("/api/candidates/" + candidateId + "/drop-out?comment=x", null, null).status());
+        assertEquals(401, post("/api/candidates/" + candidateId + "/doj/approve", null, null).status());
+        assertEquals(401, get("/api/candidates?dojToday=true", null).status());
     }
 }

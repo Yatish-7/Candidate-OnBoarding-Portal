@@ -22,7 +22,9 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 
+import com.intellectt.security.AttemptLimiter;
 import com.intellectt.security.JwtAuthFilter;
+import com.intellectt.security.SuspiciousInputFilter;
 import com.intellectt.security.RestAuthenticationEntryPoint;
 
 /**
@@ -36,14 +38,17 @@ import com.intellectt.security.RestAuthenticationEntryPoint;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final AttemptLimiter attemptLimiter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
 
     /** Allowed browser origins for the frontend (comma-separated, from properties). */
     private final List<String> allowedOrigins;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, RestAuthenticationEntryPoint authenticationEntryPoint,
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, AttemptLimiter attemptLimiter,
+            RestAuthenticationEntryPoint authenticationEntryPoint,
             @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:4173}") List<String> allowedOrigins) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.attemptLimiter = attemptLimiter;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.allowedOrigins = allowedOrigins;
     }
@@ -73,7 +78,9 @@ public class SecurityConfig {
                         .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000)))
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                // detection only: logs attack-shaped input (SUSPICIOUS_INPUT / SUSPICIOUS_REPEAT) once the user is known
+                .addFilterAfter(new SuspiciousInputFilter(attemptLimiter), JwtAuthFilter.class);
 
         return http.build();
     }

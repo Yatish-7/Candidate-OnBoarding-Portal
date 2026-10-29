@@ -5,6 +5,7 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
   LogoutOutlined,
+  UserDeleteOutlined,
   UserAddOutlined,
 } from '@ant-design/icons'
 import { getDashboardSummary } from '../api/dashboard.js'
@@ -20,6 +21,7 @@ const COUNTERS = [
   { key: 'approved', title: 'Approved', icon: <CheckCircleOutlined />, color: '#16a34a', background: '#f0fdf4' },
   { key: 'declined', title: 'Declined / rejected', icon: <CloseCircleOutlined />, color: '#dc2626', background: '#fef2f2' },
   { key: 'joined', title: 'Joined', icon: <UserAddOutlined />, color: '#4f46e5', background: '#eef2ff' },
+  { key: 'dropouts', title: 'Drop outs / Back outs', icon: <UserDeleteOutlined />, color: '#475569', background: '#f1f5f9' },
   { key: 'exited', title: 'Exited', icon: <LogoutOutlined />, color: '#c026d3', background: '#fdf4ff' },
 ]
 
@@ -78,7 +80,7 @@ export default function AdminDashboard() {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         {COUNTERS.map((counter) => (
-          // One card per row on phones, two on tablets, all five side by side on wide screens
+          // One card per row on phones, two on tablets, all six side by side on wide screens
           <Col key={counter.key} xs={24} sm={12} xl={{ flex: '1 1 0' }}>
             <CounterCard counter={counter} value={summary?.[counter.key] ?? 0} loading={!summary} />
           </Col>

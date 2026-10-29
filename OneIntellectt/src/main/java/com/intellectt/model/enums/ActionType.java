@@ -14,6 +14,7 @@ public enum ActionType {
     DECLINE_PROJECT_END,
     RATE_CHANGE,
     EDIT,
+    DROP_OUT,
     OVERRIDE_APPROVE,
     OVERRIDE_DECLINE
 }

@@ -187,4 +187,10 @@ public abstract class ApiTestSupport {
         assertEquals(200, r.status(), () -> "get candidate failed: " + r.body());
         return r.body();
     }
+
+    /** The DOJ needs TWO approvals: the Sales Lead / Manager and HR. */
+    protected void approveDojBoth(long id, String leadToken, String hrToken) {
+        assertEquals(200, act(id, "doj/approve", leadToken, null).status(), "lead DOJ approval");
+        assertEquals(200, act(id, "doj/approve", hrToken, null).status(), "HR DOJ approval");
+    }
 }

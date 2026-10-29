@@ -20,7 +20,7 @@ Two sibling folders, one system:
 | **Frontend** | `D:\Intellectt\onboarding-portal` | React 19 + Vite 8 + Ant Design 6 SPA. Has its own `CLAUDE.md` for UI conventions. |
 
 ```
-Browser ──(axios, Bearer JWT)──► Spring Boot API :5000 ──(JPA/Hibernate, HikariCP 30)──► PostgreSQL "Intellectt" :5432
+Browser ──(axios, Bearer JWT)──► Spring Boot API :5000 ──(JPA/Hibernate, HikariCP, pool 5 by default via DB_POOL_SIZE)──► PostgreSQL "Intellectt" :5432
 React :5173 (dev)                   └─(async SMTP, mailExecutor)──► Gmail (dev)
 ```
 
@@ -106,7 +106,7 @@ Frontend highlights (details in `onboarding-portal/CLAUDE.md`):
 ```bash
 # backend (from this folder, so secrets.properties is found)
 JAVA_HOME="C:\Program Files\Java\jdk-17" ./mvnw -q -DskipTests spring-boot:run   # :5000
-JAVA_HOME="C:\Program Files\Java\jdk-17" ./mvnw test > /tmp/t.log 2>&1; echo EXIT=$?  # 108 tests
+JAVA_HOME="C:\Program Files\Java\jdk-17" ./mvnw test > /tmp/t.log 2>&1; echo EXIT=$?  # 124 tests
 # frontend (../onboarding-portal)
 npm run dev    # :5173      npm run build · npm run lint
 ```
@@ -161,7 +161,9 @@ npm run dev    # :5173      npm run build · npm run lint
 - Unknown entity → fall back to the portal users holding those roles.
 
 **Schema**
-- `ddl-auto=update` won't alter CHECK constraints or drop columns. Enum additions need
+- The app now runs with `ddl-auto=validate` (env `DDL_AUTO`; the test profile uses `update`): it never changes the schema and **won't start**
+  if an entity column is missing in the database, so new columns and enum additions ALL need a `docs/*-migration.sql` script run first.
+  (`ddl-auto=update` never altered CHECK constraints either.) Enum additions need
   manual SQL (example in `docs/DATA_MODEL.md` §5).
 
 ---
@@ -176,6 +178,20 @@ npm run dev    # :5173      npm run build · npm run lint
 - User-facing messages are short, plain sentences (they're shown as-is in the UI).
 
 ---
+
+## 6f. Attack detection (29 Oct 2026)
+`security/SuspiciousInputFilter` (created in `SecurityConfig`, after `JwtAuthFilter`) logs `SUSPICIOUS_INPUT` / `SUSPICIOUS_REPEAT` to security.log for
+attack-shaped query strings and JSON bodies. Detection only (never blocks), never logs the payload or an IP. Incident steps: SECURITY.md "If an attack happens".
+
+## 6e. DOJ / project end date / drop out (29 Oct 2026)
+- **DOJ needs two approvals**: Sales Lead/Manager AND HR (`doj_lead_approved`, `doj_hr_approved`); `dojStatus` is APPROVED when both are in.
+- **Project end date needs two approvals** the same way (`project_end_lead_approved`, `project_end_hr_approved`); the recruiter raises it, the
+  Super Admin's approval settles it alone, a new date restarts both approvals. Approved = Exited.
+- **Drop out / back out** (`POST /{id}/drop-out`, comment required): status `DROPPED_OUT`, own dashboard card; allowed after the DOJ is approved
+  for Lead/Manager (own team), HR, Contracts, Payroll, Accounts, Super Admin. Not after the candidate has exited.
+- **Joining today**: `dojToday` count in the summary and `?dojToday=true` list filter; a card on the Candidates page for Lead/Manager/HR.
+- HR, Contracts, Payroll and Accounts approval emails now also go to the Sales Lead and Sales Manager.
+- Migration with COLUMNS: `docs/dropout-doj-migration.sql` (the app runs with `ddl-auto=validate`).
 
 ## 6d. Company email ids only (27 Oct 2026)
 `app.allowed-email-domains` (application.properties; the test profile uses `test.local,intellectt.com`) lists the only domains an account can

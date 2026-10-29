@@ -4,7 +4,7 @@ Two kinds of tests live in this project:
 
 | | What | Where | How long |
 |---|---|---|---|
-| **Automated tests** | 108 checks of the API: login & sessions, roles & permissions, users & teams, the full candidate workflow, paging/search/filter, the audit log, email routing, attack checks | `src/test/java` | ~1 minute |
+| **Automated tests** | 124 checks of the API: login & sessions, roles & permissions, users & teams, the full candidate workflow, paging/search/filter, the audit log, email routing, attack checks | `src/test/java` | ~1 minute |
 | **Load test** | 1000 people using the portal at the same time | `load-test/load_test.py` | ~5 minutes |
 
 Results of the load test: see [RESULTS.md](RESULTS.md).
@@ -30,7 +30,7 @@ cd D:\Intellectt\OneIntellectt
 JAVA_HOME="C:\Program Files\Java\jdk-17" ./mvnw test
 ```
 
-Expected: `Tests run: 108, Failures: 0, Errors: 0`.
+Expected: `Tests run: 124, Failures: 0, Errors: 0`.
 
 The tests start the real backend on a random port with the `test` profile
 (`src/test/resources/application-test.properties`), which points at `intellectt_test`
@@ -42,6 +42,8 @@ emails, so they can run repeatedly without cleanup.
 | `api/AuthSessionApiTest` | login, wrong password, 401 handling, one session per user, logout, idle timeout, deactivation, password reset |
 | `api/UserAndTeamApiTest` | creating every role, duplicate emails, the Admin role's limits, editing users, permanent delete, one team per recruiter |
 | `api/CandidateWorkflowApiTest` | submit → Sales Lead → HR & Contracts → Payroll & Accounts → completed, declines & re-routing (incl. Payroll/Accounts), HR revise-until-DOJ, visibility per role, Super Admin override, placement entity |
+| `api/AttackDetectionApiTest` | attack-shaped input is logged (SUSPICIOUS_INPUT / SUSPICIOUS_REPEAT) without blocking, without the attacker's text, without false alarms on ordinary text |
+| `api/DojAndDropOutApiTest` | the two-approval DOJ, the Sales Manager in the approval emails, joining today, drop out / back out |
 | `api/EmailDomainApiTest`, `api/NewFeatureSecurityApiTest`, `api/WorkflowEmailApiTest` | company-email-only rule; the newer endpoints against every role; injection / XSS / mass-assignment attempts; who each workflow email is addressed to (email service mocked, nothing sent) |
 | `api/SalesManagerApiTest` | Sales Manager visibility and approval (either one is enough), Sales Lead/Manager decline, who can assign managers, recruiter location, Lead/Manager names, employment type, placement and shared team, payroll company, project end date, rate change |
 | `api/CandidateListApiTest` | server-side paging (newest first, totals), page-size cap, search, status filter for every workflow state, dashboard counts |

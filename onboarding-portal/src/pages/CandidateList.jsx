@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { App as AntApp, Button, Card, Input, Select, Space, Table, Tooltip, Typography } from 'antd'
-import { FilterOutlined, UserAddOutlined } from '@ant-design/icons'
+import { CalendarOutlined, FilterOutlined, UserAddOutlined } from '@ant-design/icons'
 import { getCandidates } from '../api/candidates.js'
+import { getDashboardSummary } from '../api/dashboard.js'
 import NameAvatar from '../components/NameAvatar.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import StatusTag from '../components/StatusTag.jsx'
@@ -70,7 +71,17 @@ export default function CandidateList({ embedded = false }) {
   const { message } = AntApp.useApp()
 
   // What we ask the backend for. page is 0-based, like Spring.
-  const [query, setQuery] = useState({ search: '', status: '', page: 0, size: 10 })
+  const [query, setQuery] = useState({ search: '', status: '', dojToday: false, page: 0, size: 10 })
+  // How many candidates join today (shown to the Sales Lead, Sales Manager and HR)
+  const [joiningToday, setJoiningToday] = useState(0)
+  const showJoiningToday = !embedded && ['SALES_LEAD', 'SALES_MANAGER', 'HR'].includes(role)
+
+  useEffect(() => {
+    if (!showJoiningToday) return
+    getDashboardSummary()
+      .then((summary) => setJoiningToday(summary.dojToday ?? 0))
+      .catch(() => setJoiningToday(0)) // the card is a nicety; the list still works without it
+  }, [showJoiningToday])
   // What the backend sent back
   const [result, setResult] = useState({ content: [], totalElements: 0 })
   const [loading, setLoading] = useState(true)
@@ -111,6 +122,29 @@ export default function CandidateList({ embedded = false }) {
   return (
     <>
       {!embedded && <PageHeader title="Candidates" subtitle={VISIBILITY_HINTS[role]} extra={newButton} />}
+
+      {/* "Joining today": a card for the Sales Lead, Sales Manager and HR when someone's Date of Joining is today */}
+      {showJoiningToday && joiningToday > 0 && (
+        <Card
+          style={{ marginBottom: 16, borderColor: '#4f46e5', background: '#eef2ff' }}
+          styles={{ body: { display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' } }}
+        >
+          <CalendarOutlined style={{ fontSize: 28, color: '#4f46e5' }} />
+          <div style={{ flex: '1 1 240px' }}>
+            <Typography.Text strong style={{ fontSize: 16 }}>
+              {joiningToday === 1 ? '1 candidate joins today' : `${joiningToday} candidates join today`}
+            </Typography.Text>
+            <br />
+            <Typography.Text type="secondary">Today is the Date of Joining. Check and approve it if you haven't yet.</Typography.Text>
+          </div>
+          <Button
+            type={query.dojToday ? 'default' : 'primary'}
+            onClick={() => updateQuery({ dojToday: !query.dojToday, page: 0 })}
+          >
+            {query.dojToday ? 'Show all candidates' : 'Show who joins today'}
+          </Button>
+        </Card>
+      )}
 
       <Card title={embedded ? 'All candidates' : null}>
         {/* Filters: side by side on wide screens, stacked full-width on phones */}

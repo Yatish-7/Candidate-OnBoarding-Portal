@@ -37,12 +37,12 @@ executable WAR.
 | Role | Does | Sees |
 |---|---|---|
 | Recruiter | Submits placed candidates | Own submissions |
-| Sales Lead | Approves, declines or re-routes their team's candidates, approves the DOJ, sets the project end date, changes bill/pay rates, manages their team's recruiters | Own team's candidates |
+| Sales Lead | Approves, declines or re-routes their team's candidates, approves the DOJ (HR must too) and the project end date (HR must too), records drop outs, gets a "joins today" card, changes bill/pay rates, manages their team's recruiters | Own team's candidates |
 | Sales Manager | Same as a Sales Lead, over several teams. Either the Lead or the Manager is enough, both are never required | Candidates of every team under them |
-| HR · Contracts | Review in parallel: approve or decline (comment required). **HR can also edit a candidate's details at any time** (everyone in the loop is emailed) | Candidates past Sales Lead / Manager approval |
-| Payroll · Accounts | Review in parallel after HR **and** Contracts approve: approve or decline (comment required on decline) | Only candidates HR and Contracts have both approved |
+| HR · Contracts | Review in parallel: approve or decline (comment required). **HR can also edit a candidate's details at any time**, **approves the DOJ and the project end date together with the Sales Lead / Manager**, and gets a "joins today" card | Candidates past Sales Lead / Manager approval |
+| Payroll · Accounts | Review in parallel after HR **and** Contracts approve: approve or decline (comment required on decline); can record a drop out after the DOJ | Only candidates HR and Contracts have both approved |
 | Admin | Manages users (except Super Admin) and teams | No candidates |
-| Super Admin | Oversight, override at any stage, change rates, audit log | Everything |
+| Super Admin | Oversight, override at any stage, change rates, audit log; dashboard cards incl. Exited and Drop outs / Back outs | Everything |
 
 ## Quick start (development)
 
@@ -77,16 +77,17 @@ named `Intellectt` (`CREATE DATABASE "Intellectt";`).
 
 Startup fails on purpose if the JWT key or SSN encryption key is missing or weak.
 
-**Existing database?** `ddl-auto=update` adds new tables and columns itself but never changes
-CHECK constraints. Run the SQL files in `docs/` once per database, in this order, before using the
-matching feature: `sales-manager-migration.sql`, `payroll-accounts-migration.sql`,
-`project-end-migration.sql`, `rate-change-migration.sql`, `candidate-edit-migration.sql`, `project-end-approval-migration.sql`. Back the database up first.
+**Database changes are SQL scripts.** The app runs with `spring.jpa.hibernate.ddl-auto=validate` (`DDL_AUTO`): it checks the
+schema at startup and **will not start** if a column is missing; it never changes the schema itself. Run the SQL files in `docs/`
+once per database, in this order, BEFORE deploying the matching version: `sales-manager-migration.sql`, `payroll-accounts-migration.sql`,
+`project-end-migration.sql`, `rate-change-migration.sql`, `candidate-edit-migration.sql`, `project-end-approval-migration.sql`,
+`dropout-doj-migration.sql` (the last one adds columns). For a brand-new local database run once with `DDL_AUTO=update`. Back the database up first.
 `docs/sample-candidates.sql` adds two sample candidates (no emails are sent).
 
 ## Tests
 
 ```bash
-./mvnw test        # 108 API and unit tests, about 1-2 minutes
+./mvnw test        # 124 API and unit tests, about 1-2 minutes
 ```
 
 The tests need a separate database, `CREATE DATABASE intellectt_test;`. They start the

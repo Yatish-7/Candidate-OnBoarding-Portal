@@ -119,7 +119,11 @@ class CandidateWorkflowApiTest extends ApiTestSupport {
         assertEquals(200, act(id, "hr/approve", hrT, "ok now").status());
         assertEquals("IN_HR_CONTRACTS_REVIEW", candidate(id, lead).path("status").asText());
 
+        // the DOJ needs BOTH approvals; with only the Sales Lead's, HR may still revise
         assertEquals(200, act(id, "doj/approve", lead, null).status());
+        assertEquals("RAISED", candidate(id, lead).path("dojStatus").asText());
+        assertEquals(400, act(id, "doj/approve", lead, null).status()); // already approved by the lead
+        assertEquals(200, act(id, "doj/approve", hrT, null).status());
         assertEquals("APPROVED", candidate(id, lead).path("dojStatus").asText());
         assertEquals(400, act(id, "hr/decline", hrT, "too late").status());
         assertEquals(400, act(id, "hr/approve", hrT, null).status());

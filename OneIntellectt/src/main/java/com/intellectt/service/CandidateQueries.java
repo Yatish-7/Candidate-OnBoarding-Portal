@@ -33,13 +33,14 @@ final class CandidateQueries {
             CandidateStatus.IN_HR_CONTRACTS_REVIEW,
             CandidateStatus.IN_PAYROLL_ACCOUNTS_REVIEW,
             CandidateStatus.RETURNED_TO_SALES_LEAD,
+            CandidateStatus.DROPPED_OUT,
             CandidateStatus.COMPLETED,
             CandidateStatus.OVERRIDE_APPROVED,
             CandidateStatus.OVERRIDE_REJECTED);
 
     /** Every status key {@link #statusKey} can produce (= the filter's allowed values). */
     static final List<String> STATUS_KEYS = List.of("PENDING_SALES_LEAD", "PENDING_HR", "PENDING_CONTRACTS",
-            "PENDING_PAYROLL_ACCOUNTS", "DECLINED", "AWAITING_DOJ", "JOINED", "EXITED", "ADMIN_APPROVED", "ADMIN_REJECTED");
+            "PENDING_PAYROLL_ACCOUNTS", "DECLINED", "AWAITING_DOJ", "JOINED", "EXITED", "DROPPED_OUT", "ADMIN_APPROVED", "ADMIN_REJECTED");
 
     /** Dashboard counter → the status keys it adds up (mirrors SUMMARY_GROUPS in status.js). */
     static final Map<String, List<String>> SUMMARY_GROUPS = Map.of(
@@ -47,7 +48,8 @@ final class CandidateQueries {
             "approved", List.of("AWAITING_DOJ", "ADMIN_APPROVED"),
             "declined", List.of("DECLINED", "ADMIN_REJECTED"),
             "joined", List.of("JOINED"),
-            "exited", List.of("EXITED"));
+            "exited", List.of("EXITED"),
+            "dropouts", List.of("DROPPED_OUT"));
 
     private CandidateQueries() {
     }
@@ -63,6 +65,8 @@ final class CandidateQueries {
                 return "ADMIN_REJECTED";
             case OVERRIDE_APPROVED:
                 return "ADMIN_APPROVED";
+            case DROPPED_OUT:
+                return "DROPPED_OUT";
             case RETURNED_TO_SALES_LEAD:
             case SALES_LEAD_DECLINED:
                 return "DECLINED";
@@ -104,6 +108,17 @@ final class CandidateQueries {
         };
     }
 
+    /** Candidates whose Date of Joining is today (not declined, rejected or dropped out). */
+    static Specification<Candidate> dojToday(boolean only) {
+        if (!only) {
+            return (root, query, cb) -> cb.conjunction();
+        }
+        java.time.LocalDate today = java.time.LocalDate.now();
+        return (root, query, cb) -> cb.and(cb.equal(root.get("dojDate"), today),
+                cb.not(root.get("status").in(CandidateStatus.SALES_LEAD_DECLINED, CandidateStatus.OVERRIDE_REJECTED,
+                        CandidateStatus.DROPPED_OUT)));
+    }
+
     /** The search box: candidate name, client, job role or recruiter (case-insensitive). */
     static Specification<Candidate> matches(String search) {
         if (search == null || search.isBlank()) {
@@ -136,6 +151,7 @@ final class CandidateQueries {
             return switch (key) {
                 case "ADMIN_REJECTED" -> cb.equal(status, CandidateStatus.OVERRIDE_REJECTED);
                 case "ADMIN_APPROVED" -> cb.equal(status, CandidateStatus.OVERRIDE_APPROVED);
+                case "DROPPED_OUT" -> cb.equal(status, CandidateStatus.DROPPED_OUT);
                 case "DECLINED" -> status.in(CandidateStatus.RETURNED_TO_SALES_LEAD,
                         CandidateStatus.SALES_LEAD_DECLINED);
                 case "PENDING_SALES_LEAD" -> cb.equal(status, CandidateStatus.PENDING_SALES_LEAD_APPROVAL);

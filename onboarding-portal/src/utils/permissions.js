@@ -83,13 +83,12 @@ export function canFinalApprove() {
 
 // The recruiter supplies the DOJ at intake; the Sales Lead approves it, but only
 // once the candidate itself has been approved.
+// The DOJ needs TWO approvals: the Sales Lead / Sales Manager and HR (each approves once).
 export function canApproveDoj(user, candidate) {
-  return (
-    isOpen(candidate) &&
-    isOwnTeamLead(user, candidate) &&
-    candidate.stages.doj === 'PENDING' &&
-    candidate.stages.salesLead === 'APPROVED'
-  )
+  if (!isOpen(candidate) || candidate.stages.doj !== 'PENDING' || candidate.stages.salesLead !== 'APPROVED') return false
+  if (candidate.backendStatus === 'DROPPED_OUT') return false
+  if (user.role === 'HR') return !candidate.dojHrApproved
+  return isOwnTeamLead(user, candidate) && !candidate.dojLeadApproved
 }
 
 // Bill and pay rates can change mid-way: only the team's Sales Lead / Sales Manager and the
@@ -102,10 +101,11 @@ export function canChangeRates(user, candidate) {
 // The Sales Lead / Sales Manager / Super Admin sets the project end date once the DOJ is approved (and may
 // change it later). The server only shows a Sales Manager their own teams' candidates.
 export function canSetProjectEnd(user, candidate) {
-  if (candidate.stages.doj !== 'SET' || candidate.projectEndStatus === 'RAISED') return false
-  // Entering the date as an approver is the approval itself. The Super Admin may too (also after an
-  // override approval, but not on a rejected candidate)
+  if (candidate.stages.doj !== 'SET' || candidate.projectEndStatus === 'RAISED' || candidate.backendStatus === 'DROPPED_OUT') return false
+  // Entering the date as an approver counts as their own approval (the date needs BOTH the Lead / Manager and HR).
+  // The Super Admin's entry settles it (also after an override approval, but not on a rejected candidate)
   if (user.role === 'SUPER_ADMIN') return candidate.override?.decision !== 'REJECTED'
+  if (user.role === 'HR') return isOpen(candidate)
   return isOpen(candidate) && isOwnTeamLead(user, candidate)
 }
 
@@ -117,14 +117,27 @@ export function canRaiseProjectEnd(user, candidate) {
     candidate.recruiterId === user.id &&
     candidate.stages.doj === 'SET' &&
     !candidate.override &&
+    candidate.backendStatus !== 'DROPPED_OUT' &&
     candidate.projectEndStatus !== 'APPROVED'
   )
 }
 
-// A raised project end date waits for the Lead / Manager / Super Admin to approve or decline it
+// A raised project end date needs BOTH the Lead / Manager and HR to approve (the Super Admin settles it alone);
+// each of them may also decline it.
 export function canDecideProjectEnd(user, candidate) {
   if (candidate.projectEndStatus !== 'RAISED') return false
-  return user.role === 'SUPER_ADMIN' || (isOpen(candidate) && isOwnTeamLead(user, candidate))
+  if (user.role === 'SUPER_ADMIN') return true
+  if (user.role === 'HR') return isOpen(candidate) && !candidate.projectEndHrApproved
+  return isOpen(candidate) && isOwnTeamLead(user, candidate) && !candidate.projectEndLeadApproved
+}
+
+// Drop out / back out: after the DOJ is approved, until the candidate has exited. The Lead / Manager, HR, Contracts,
+// Payroll, Accounts and the Super Admin can record it (comment required).
+export function canDropOut(user, candidate) {
+  if (candidate.stages.doj !== 'SET' || candidate.backendStatus === 'DROPPED_OUT') return false
+  if (candidate.projectEndStatus === 'APPROVED' || candidate.override?.decision === 'REJECTED') return false
+  if (['SUPER_ADMIN', 'HR', 'CONTRACTS', 'PAYROLL', 'ACCOUNTS'].includes(user.role)) return true
+  return isOwnTeamLead(user, candidate)
 }
 
 // Only HR can edit a candidate's details, at any time (everyone in the loop is emailed).

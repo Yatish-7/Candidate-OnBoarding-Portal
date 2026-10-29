@@ -41,7 +41,8 @@ spreadsheets, with no single record of who approved what and when.
 |---|---|
 | **Candidate** | A person placed with a client; the record that moves through the workflow. |
 | **Placement Entity** | The Intellectt legal entity employing the candidate (e.g. `novozen`). Decides which email domain notifications go to. |
-| **DOJ** | Date of Joining. Supplied by the recruiter at intake, approved by the Sales Lead or Sales Manager. |
+| **DOJ** | Date of Joining. Supplied by the recruiter at intake. It needs **two approvals**: the Sales Lead or Sales Manager, **and** HR. |
+| **Drop out / back out** | The candidate leaves after the DOJ was approved. Recorded (with a reason) by the Lead, Manager, HR, Contracts, Payroll, Accounts or the Super Admin; status `DROPPED_OUT`, counted on the Super Admin's Drop Outs card. |
 | **Sales Manager** | Oversees several teams; has the same approval powers as a team's Sales Lead over them. Either one is enough. |
 | **Branch** | HR, Contracts, Payroll and Accounts each make their own decision ("branch"): HR and Contracts in parallel, then Payroll and Accounts in parallel. |
 | **Payroll company** | Optional: the company running the candidate's payroll (one of the ten entities, or "Other" with a typed name). When it differs from the Placement Entity, stage emails also go to its mailboxes. |
@@ -56,9 +57,9 @@ spreadsheets, with no single record of who approved what and when.
 | Role | Responsibility | Sees | Can do |
 |---|---|---|---|
 | `RECRUITER` | Submits placed candidates | Own submissions | Submit |
-| `SALES_LEAD` | First approval gate for their team | Their team's candidates; their team | Approve / decline / re-route; approve DOJ; set project end date; change rates; add/remove recruiters in own team |
+| `SALES_LEAD` | First approval gate for their team | Their team's candidates; their team | Approve / decline / re-route; approve DOJ (HR must approve it too); approve the project end date (HR too); drop out; set project end date; change rates; add/remove recruiters in own team |
 | `SALES_MANAGER` | Same gate, over several teams | Candidates and teams of every team under them | Same as a Sales Lead for those teams. Either one is enough |
-| `HR` | Reviews (parallel with Contracts) | Candidates past Sales Lead / Manager approval | Approve / decline; may revise until DOJ approved; **edit the candidate's details at any time** |
+| `HR` | Reviews (parallel with Contracts) | Candidates past Sales Lead / Manager approval | Approve / decline; may revise until DOJ approved; **edit the candidate's details at any time**; **approves the DOJ and the project end date** (with the Lead / Manager); drop out |
 | `CONTRACTS` | Reviews (parallel with HR) | Candidates past Sales Lead / Manager approval | Approve / decline |
 | `PAYROLL` | Payroll setup | Candidates HR **and** Contracts have both approved | Approve / decline (comment on decline) |
 | `ACCOUNTS` | Billing setup | Candidates HR **and** Contracts have both approved | Approve / decline (comment on decline) |
@@ -157,9 +158,10 @@ stateDiagram-v2
 | HR approve / decline | HR | Past Sales Lead approval, not overridden, DOJ not approved | Sets `hrDecision`; status re-derived. A decline also resets Payroll/Accounts to `PENDING`. HR may change its mind until the DOJ is approved |
 | Contracts approve / decline | Contracts | `IN_HR_CONTRACTS_REVIEW` and `contractsDecision = PENDING` | Sets `contractsDecision`; decline → `RETURNED_TO_SALES_LEAD` |
 | Payroll / Accounts approve / decline | Payroll, Accounts (each for itself) | `IN_PAYROLL_ACCOUNTS_REVIEW` and own decision `PENDING` | Both approve → `COMPLETED`; a decline (comment required) → `RETURNED_TO_SALES_LEAD`; on re-route only the declined team redoes it |
-| DOJ approve | Lead / Manager of the team | Candidate past Sales Lead approval and `dojStatus = RAISED` | `dojStatus = APPROVED` (locks HR) |
+| DOJ approve | Lead / Manager of the team **and HR** (each approves once, in any order) | Candidate past Sales Lead approval and `dojStatus = RAISED` | The first approval keeps `dojStatus = RAISED` (flags `dojLeadApproved` / `dojHrApproved`); when both have approved `dojStatus = APPROVED` (locks HR's decision). Everyone in the loop is emailed each time |
+| Drop out / back out | Lead / Manager of the team, HR, Contracts, Payroll, Accounts, Super Admin | `dojStatus = APPROVED`, not already exited / dropped out; comment required | `DROPPED_OUT` (own Drop Outs card; not counted as Declined or Joined); trail entry `DROP_OUT`; email to everyone in the loop |
 | Raise project end date | The candidate's recruiter | `dojStatus = APPROVED`; date not before the DOJ date; not yet approved | `projectEndStatus = RAISED` (waits for approval; the candidate is **not** exited yet); the Lead and Manager are emailed |
-| Approve / decline project end date | Lead / Manager of the team, or the Super Admin | `projectEndStatus = RAISED`; decline needs a comment | Approve → `APPROVED` and the candidate is **Exited**; decline → `DECLINED` (the recruiter can raise a new date). Entering the date directly as a Lead / Manager / Super Admin is the approval itself |
+| Approve / decline project end date | Lead / Manager of the team **and HR** (the Super Admin settles it alone) | `projectEndStatus = RAISED`; decline needs a comment | Needs BOTH the Lead / Manager and HR to approve (`projectEndLeadApproved`, `projectEndHrApproved`) → `APPROVED` and the candidate is **Exited**; any of them can decline → `DECLINED` (the recruiter can raise a new date). Entering a date as a Lead / Manager or HR counts as that side's approval; a new date restarts both approvals |
 | (old) Project end date | Lead / Manager of the team, or the Super Admin | `dojStatus = APPROVED`; date not before the DOJ date | Sets `projectEndDate` and the candidate becomes **Exited**; may be changed again (each change on the trail) |
 | Edit details | HR | Candidate visible to HR (past the first approval, any status); must change something | Full replace of the intake fields (blank/masked SSN keeps the stored one); approvals are not reset; trail entry `EDIT` lists old → new; email to everyone in the loop |
 | Change rates | Lead / Manager of the team, Super Admin | Not for declined/rejected candidates; comment required; must change something | Updates `billRate` / `payRate`; trail entry old → new |
@@ -180,13 +182,14 @@ The two **must** agree. First match wins:
 | `DECLINED` | `RETURNED_TO_SALES_LEAD` or `SALES_LEAD_DECLINED` |
 | `PENDING_SALES_LEAD` | `PENDING_SALES_LEAD_APPROVAL` |
 | `EXITED` | The project end date is **approved** (`projectEndStatus = APPROVED`) |
-| `JOINED` | DOJ approved and no project end date yet |
+| `DROPPED_OUT` | Recorded as a drop out / back out |
+| `JOINED` | DOJ approved (both approvals) and no approved project end date |
 | `AWAITING_DOJ` | `COMPLETED` (HR, Contracts, Payroll and Accounts all approved) |
 | `PENDING_PAYROLL_ACCOUNTS` | `IN_PAYROLL_ACCOUNTS_REVIEW` |
 | `PENDING_CONTRACTS` / `PENDING_HR` | In review: Contracts still pending / only HR left |
 
 Dashboard counters: pending = the four `PENDING_*` keys · approved = `AWAITING_DOJ` + `ADMIN_APPROVED`
-· declined = `DECLINED` + `ADMIN_REJECTED` · joined = `JOINED` · exited = `EXITED` (the Super Admin dashboard shows an **Exited** card).
+· declined = `DECLINED` + `ADMIN_REJECTED` · joined = `JOINED` · exited = `EXITED` · dropouts = `DROPPED_OUT`. The Super Admin dashboard shows cards for Pending, Approved, Declined, Joined, **Exited** and **Drop outs / Back outs**. The summary also returns `dojToday` (see 4.7).
 
 ### 4.3 Visibility (row-level access)
 
@@ -210,12 +213,15 @@ and as `canView` to single reads:
 | Recruiter submits | The team's Sales Lead **and** Sales Manager only (no Super Admin copy) |
 | Sales Lead / Manager approves | `hr@`, `contracts@`, `payroll@`, `accounts@` + `superadmin@` *entity domain*, the team's other approver, and **the recruiter**. Payroll and Accounts are told now but only **see** the candidate in the portal once HR and Contracts have both approved |
 | Sales Lead / Manager declines | The recruiter and the other approver + `superadmin@` |
-| HR approves, and Contracts approves (each one, separately) | `hr@`, `contracts@`, `payroll@`, `accounts@` + `superadmin@`. The email that completes the pair says Payroll and Accounts can now act |
+| HR, Contracts, Payroll or Accounts approves (each one, separately) | `hr@`, `contracts@`, `payroll@`, `accounts@` + `superadmin@`, **and the team's Sales Lead and Sales Manager**. The email that completes the pair says Payroll and Accounts can now act |
 | HR / Contracts / Payroll / Accounts declines | The Sales Lead and Sales Manager + `superadmin@` |
 | Payroll and Accounts both approved | The Sales Lead, Sales Manager and the recruiter + `superadmin@` ("the DOJ can be approved") |
-| DOJ approved | `payroll@`, `accounts@`, the recruiter + `superadmin@` |
-| Project end date raised by the recruiter | The team's Sales Lead and Sales Manager + `superadmin@` ("please approve or decline") |
-| Project end date approved / changed by an approver (candidate exits) | `hr@`, `contracts@`, `payroll@`, `accounts@`, the recruiter, the other approver + `superadmin@` |
+| DOJ approved by one side (Lead / Manager or HR) | `hr@`, `contracts@`, `payroll@`, `accounts@` + `superadmin@`, the other approver and the recruiter ("waiting for HR / the Sales Lead") |
+| DOJ approved by both | The same people ("the Date of Joining is approved"): everyone in the loop |
+| Drop out / back out recorded | `hr@`, `contracts@`, `payroll@`, `accounts@` + `superadmin@`, the Sales Lead, the Sales Manager and the recruiter (not the person who recorded it) |
+| Project end date raised by the recruiter | The team's Sales Lead, Sales Manager and **HR** (`hr@`) + `superadmin@` ("both must approve") |
+| Project end date approved by one side (Lead / Manager or HR) | Everyone in the loop ("waiting for HR / the Sales Lead") |
+| Project end date approved by both (candidate exits) | `hr@`, `contracts@`, `payroll@`, `accounts@`, the recruiter, the other approver + `superadmin@` |
 | Details edited by HR | `hr@`, `contracts@`, `payroll@`, `accounts@`, the Lead, the Manager, the recruiter + `superadmin@`; the email lists the changes (old → new) |
 | Rates changed | `hr@`, `contracts@`, `payroll@`, `accounts@`, the Lead, the Manager, the recruiter + `superadmin@` (not the person who changed them) |
 | Super Admin override | `hr@`, `contracts@`, `accounts@`, `payroll@`, the Sales Lead and Manager + `superadmin@` |
@@ -256,7 +262,13 @@ Manager email, Manager contact, Sourcing recruiter, Sourcing recruiter lead, Ref
 The "which company / which team" answers are cleared when the Yes/No is No. Sharing a placement does
 **not** give the shared team access to the candidate (a decision still open).
 
-### 4.6 User, team and account lifecycle
+### 4.6 Joining today
+
+When a candidate's Date of Joining is **today** (server date), the Sales Lead, Sales Manager and HR see a card at the top of their Candidates page
+("N candidates join today") with a button that lists only those candidates (`GET /api/candidates?dojToday=true`; the count is `dojToday` in
+`/api/candidates/summary`). Candidates that were declined, rejected or dropped out are not counted.
+
+### 4.7 User, team and account lifecycle
 - Only company email ids are accepted (create, edit, sign-in): the domains in `app.allowed-email-domains`; anything else gets "use your correct company email id" (`AllowedEmailDomains`).
 - Only Super Admin / Admin create users. They set a **temporary password**
   (`mustChangePassword = true`), and the user must choose their own at first sign-in.
@@ -278,8 +290,8 @@ Notable choices:
 - `candidates.ssn_no` is stored encrypted: `enc:v1:` + base64(IV + ciphertext).
 - Indexes on every column the candidate list filters or sorts by
   (`submitted_by_id`, `team_id`, `status`, `updated_at`), and on the trail and session foreign keys.
-- Schema evolution uses `ddl-auto=update`. It adds tables and columns but never changes
-  constraints or drops anything, so those need manual SQL: `docs/sales-manager-migration.sql`,
+- The app runs with `ddl-auto=validate`: it checks the schema at startup and never changes it, so every schema change (columns,
+  tables, CHECK constraints) is a SQL script run before deploying: `docs/sales-manager-migration.sql`,
   `payroll-accounts-migration.sql`, `project-end-migration.sql`, `rate-change-migration.sql`
   (see DATA_MODEL §5).
 - Names of the team's Sales Lead / Sales Manager on a candidate are computed for each response, not stored.
@@ -311,6 +323,7 @@ Summary only; detail and test evidence in [SECURITY.md](../SECURITY.md) and [COM
 | Output | JSON only; React escaping; email HTML escaped; CSP + security headers; generic error messages |
 | Data protection | SSN encrypted at rest and never returned in full (`ssnMasked`). Secrets kept outside the code (`secrets.properties` / environment variables) |
 | Accountability | Envers audit of every change (who/when, before/after). Security event log (`logs/security.log`, 365 days). No IP addresses stored |
+| Detection and response | `SuspiciousInputFilter` logs attack-shaped input (`SUSPICIOUS_INPUT`, `SUSPICIOUS_REPEAT`) without blocking and without the attacker's text; the incident runbook in SECURITY.md says how to contain (deactivate a user, rotate the JWT secret, clear sessions), preserve evidence and recover |
 
 ---
 
@@ -322,7 +335,7 @@ Summary only; detail and test evidence in [SECURITY.md](../SECURITY.md) and [COM
 | Latency (p95) | < 500 ms | 71 ms (all requests), single laptop running everything |
 | Payload size | Independent of data volume | Server-side paging; list ≈ 8.5 KB |
 | Availability | Business hours, single site | One instance; sessions in the DB allow a second instance behind a load balancer |
-| DB connections | Never exhausted | HikariCP pool 30, `open-in-view=false`, `@EntityGraph` to avoid N+1 |
+| DB connections | Never exhausted | HikariCP pool (default 5; 30 in the 1000-user test, set with `DB_POOL_SIZE`), `open-in-view=false`, `@EntityGraph` to avoid N+1 |
 | Overload behaviour | Degrade, don't sign users out | DB errors → 503 "busy", never 401 |
 | Auditability | Every change traceable | Envers on all tables |
 | Browser support | Current Chrome/Edge/Firefox/Safari, desktop-first | Responsive Ant Design layout |
@@ -348,7 +361,7 @@ Summary only; detail and test evidence in [SECURITY.md](../SECURITY.md) and [COM
 
 | Level | What | Where |
 |---|---|---|
-| API tests (JUnit 5, real HTTP, real PostgreSQL `intellectt_test`) | Auth & sessions, users & teams, full workflow incl. Sales Manager / Payroll / Accounts, paging/filters, audit, attacks, role matrix, compliance controls, rate change, project end date | `src/test/java/com/intellectt/api/*` — 108 tests in total |
+| API tests (JUnit 5, real HTTP, real PostgreSQL `intellectt_test`) | Auth & sessions, users & teams, full workflow incl. Sales Manager / Payroll / Accounts, paging/filters, audit, attacks, role matrix, compliance controls, rate change, project end date | `src/test/java/com/intellectt/api/*` — 124 tests in total |
 | Unit tests | Email routing (incl. several entities in one email), JWT filter behaviour under DB failure | `service/`, `security/` |
 | Load test | 1000 concurrent users, role-appropriate actions | `load-test/load_test.py`, results in `RESULTS.md` |
 | Frontend | Lint (`oxlint`), production build, `npm audit` | `npm run lint`, `npm run build` |
@@ -365,7 +378,7 @@ Tests use separate databases and can't send real email. Run them with `./mvnw te
 | JWT in `localStorage` | Mitigated by CSP and the absence of HTML-injection sinks; an HttpOnly cookie + CSRF is the alternative |
 | Rate limits in memory | Per instance; move to Redis/DB if scaled out |
 | Reset tokens stored unhashed | Single-use, 60-minute TTL |
-| `ddl-auto=update` | Adequate now; adopt Flyway/Liquibase before frequent schema changes in production |
+| Schema changes are hand-run SQL scripts | `ddl-auto=validate` makes a missing migration a startup failure (safe, but easy to forget); adopt Flyway/Liquibase |
 | Only HR edits details | Recruiters can't fix their own typos; a decline is fixed by re-routing. HR edits don't reset approvals (decide if some fields should) |
 | Shared placement gives the shared team no access | Decide whether its Lead / Manager should see the candidate |
 | Data retention | Needs a business decision (§1.3) |

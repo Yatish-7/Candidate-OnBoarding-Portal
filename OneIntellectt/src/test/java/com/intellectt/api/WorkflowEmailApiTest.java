@@ -109,39 +109,53 @@ class WorkflowEmailApiTest extends ApiTestSupport {
     }
 
     @Test
-    @DisplayName("Project end date: raising it emails the Sales Lead and Manager; approving it emails everyone in the loop")
+    @DisplayName("Project end date: raising it emails Lead, Manager and HR; each approval and the final approval email everyone")
     @SuppressWarnings("unchecked")
     void projectEndEmails() {
         String sa = admin();
         TeamSetup ts = newTeam(sa);
         Account manager = createUser(sa, "SALES_MANAGER", null);
         assertEquals(200, put("/api/teams/" + ts.teamId() + "/sales-manager/" + manager.id(), sa, null).status());
+        String hr = login(createUser(sa, "HR", null));
         String rec = login(ts.recruiter());
         String lead = login(ts.lead());
         long id = submitCandidate(rec);
         act(id, "sales-lead/approve", lead, null);
-        act(id, "doj/approve", lead, null);
+        approveDojBoth(id, lead, hr);
         clearInvocations(emailService);
 
-        // the recruiter fixes the date: the Sales Lead AND the Sales Manager are emailed (Super Admin copied)
+        // the recruiter fixes the date: the Sales Lead, the Sales Manager and HR are emailed (Super Admin copied)
         assertEquals(200, act(id, "project-end?date=2027-06-30", rec, null).status());
+        ArgumentCaptor<Collection<Role>> rolesRaise = ArgumentCaptor.forClass(Collection.class);
         ArgumentCaptor<Collection<User>> people = ArgumentCaptor.forClass(Collection.class);
         ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
-        verify(emailService).notifyStage(ArgumentMatchers.<Collection<String>>any(), ArgumentMatchers.<Collection<Role>>any(),
+        verify(emailService).notifyStage(ArgumentMatchers.<Collection<String>>any(), rolesRaise.capture(),
                 people.capture(), org.mockito.ArgumentMatchers.contains("Project end date to approve"), body.capture());
         Set<String> to = people.getValue().stream().map(User::getEmail).collect(java.util.stream.Collectors.toSet());
         assertEquals(Set.of(ts.lead().email(), manager.email()), to);
+        assertEquals(Set.of(Role.HR), Set.copyOf(rolesRaise.getValue()));
         assertTrue(body.getValue().contains("/candidates/" + id + "\""), "the button opens the candidate");
         clearInvocations(emailService);
 
-        // the Sales Manager approves: HR, Contracts, Payroll, Accounts (+ Super Admin), the Sales Lead and the recruiter
+        // the Sales Manager approves: everyone is told, still waiting for HR
         assertEquals(200, act(id, "project-end/approve", login(manager), null).status());
         ArgumentCaptor<Collection<Role>> roles = ArgumentCaptor.forClass(Collection.class);
         ArgumentCaptor<Collection<User>> people2 = ArgumentCaptor.forClass(Collection.class);
+        ArgumentCaptor<String> body2 = ArgumentCaptor.forClass(String.class);
         verify(emailService).notifyStage(ArgumentMatchers.<Collection<String>>any(), roles.capture(),
-                people2.capture(), org.mockito.ArgumentMatchers.contains("Project end date approved"), anyString());
+                people2.capture(), org.mockito.ArgumentMatchers.contains("Project end date approved by"), body2.capture());
         assertEquals(ALL_FOUR, Set.copyOf(roles.getValue()));
         Set<String> to2 = people2.getValue().stream().map(User::getEmail).collect(java.util.stream.Collectors.toSet());
         assertEquals(Set.of(ts.lead().email(), ts.recruiter().email()), to2); // the other approver + the recruiter
+        assertTrue(body2.getValue().contains("waiting for HR"));
+        clearInvocations(emailService);
+
+        // HR approves: the date is approved and everyone is told
+        assertEquals(200, act(id, "project-end/approve", hr, null).status());
+        ArgumentCaptor<Collection<User>> people3 = ArgumentCaptor.forClass(Collection.class);
+        verify(emailService).notifyStage(ArgumentMatchers.<Collection<String>>any(), ArgumentMatchers.<Collection<Role>>any(),
+                people3.capture(), org.mockito.ArgumentMatchers.contains("Project end date approved:"), anyString());
+        Set<String> to3 = people3.getValue().stream().map(User::getEmail).collect(java.util.stream.Collectors.toSet());
+        assertEquals(Set.of(ts.lead().email(), manager.email(), ts.recruiter().email()), to3);
     }
 }

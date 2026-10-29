@@ -57,7 +57,7 @@ flowchart LR
 
     B -- "GET static files" --> FE
     B -- "JSON over HTTPS<br/>Authorization: Bearer JWT" --> API
-    API -- "JDBC (HikariCP, 30 connections)" --> DB
+    API -- "JDBC (HikariCP, 5 connections by default; DB_POOL_SIZE)" --> DB
     API -- "async, mailExecutor pool" --> SMTP
     API -- writes --> LOG
     SEC -. "DB password, JWT key,<br/>SSN key, mail password" .-> API
@@ -128,7 +128,7 @@ flowchart TB
 | `service` | Interfaces + `*Impl`: auth, users, teams, candidates (workflow, HR edit, rates, project end date, email HTML), sessions, email, audit; `CandidateQueries` (Specifications), `CredentialRules` (password/email rules), `AllowedEmailDomains` (company email ids only) |
 | `repository` | Spring Data JPA repositories; `@EntityGraph` on list/detail queries to avoid N+1 |
 | `model`, `model.enums` | JPA entities used directly as JSON bodies; `SsnConverter` |
-| `security` | `JwtService`, `JwtAuthFilter`, `RestAuthenticationEntryPoint`, `AppUserPrincipal`, `CustomUserDetailsService`, `AttemptLimiter`, `FieldCipher`, `SecurityEvents` |
+| `security` | `JwtService`, `JwtAuthFilter`, `SuspiciousInputFilter` (logs attack-shaped input, runs after the JWT filter), `RestAuthenticationEntryPoint`, `AppUserPrincipal`, `CustomUserDetailsService`, `AttemptLimiter`, `FieldCipher`, `SecurityEvents` |
 | `config` | `SecurityConfig`, `AsyncConfig` (mail pool), `EntityMailProperties`, `DataInitializer` (first Super Admin), `AuditLoggingGuard`, `SsnEncryptionMigration` |
 | `audit` | `AuditRevision` (`audit_revisions`), `AuditRevisionListener` (who made the change) |
 | `exception` | `BadRequestException` (400), `ForbiddenException` (403), `ResourceNotFoundException` (404), `TooManyRequestsException` (429), `GlobalExceptionHandler` |

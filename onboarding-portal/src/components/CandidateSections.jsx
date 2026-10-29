@@ -73,6 +73,20 @@ export default function CandidateSections({ candidate: c }) {
     { label: 'Pay rate', children: formatRate(c.payRate) },
     { label: 'Vendor percentage', children: formatVendorPercentage(c.payRate, c.billRate, c.discountPrice) },
     {
+      label: 'Date of Joining approvals',
+      children:
+        c.stages.doj === 'NOT_STARTED'
+          ? '—'
+          : `Sales Lead / Manager: ${c.dojLeadApproved || c.stages.doj === 'SET' ? 'approved' : 'pending'} · HR: ${c.dojHrApproved || c.stages.doj === 'SET' ? 'approved' : 'pending'}`,
+    },
+    {
+      label: 'Project end date approvals',
+      children:
+        c.projectEndStatus === 'RAISED' || c.projectEndStatus === 'APPROVED'
+          ? `Sales Lead / Manager: ${c.projectEndLeadApproved || c.projectEndStatus === 'APPROVED' ? 'approved' : 'pending'} · HR: ${c.projectEndHrApproved || c.projectEndStatus === 'APPROVED' ? 'approved' : 'pending'}`
+          : '—',
+    },
+    {
       label: 'Project end date',
       children: c.projectEndDate
         ? `${formatDate(c.projectEndDate)}${

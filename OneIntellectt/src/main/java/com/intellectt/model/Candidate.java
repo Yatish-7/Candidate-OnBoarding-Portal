@@ -190,6 +190,26 @@ public class Candidate {
     @Column(nullable = false, columnDefinition = "varchar(255) default 'NOT_RAISED' not null")
     private ProjectEndStatus projectEndStatus = ProjectEndStatus.NOT_RAISED;
 
+    /**
+     * The DOJ needs TWO approvals: the team's Sales Lead / Sales Manager and HR. {@link #dojStatus} becomes
+     * APPROVED only when both have approved. Same for the project end date below.
+     */
+    @JsonProperty(access = Access.READ_ONLY)
+    @Column(nullable = false, columnDefinition = "boolean default false not null")
+    private boolean dojLeadApproved;
+
+    @JsonProperty(access = Access.READ_ONLY)
+    @Column(nullable = false, columnDefinition = "boolean default false not null")
+    private boolean dojHrApproved;
+
+    @JsonProperty(access = Access.READ_ONLY)
+    @Column(nullable = false, columnDefinition = "boolean default false not null")
+    private boolean projectEndLeadApproved;
+
+    @JsonProperty(access = Access.READ_ONLY)
+    @Column(nullable = false, columnDefinition = "boolean default false not null")
+    private boolean projectEndHrApproved;
+
     /** The actual Date of Joining, captured when the DOJ is raised. */
     private LocalDate dojDate;
 
@@ -416,6 +436,38 @@ public class Candidate {
 
     public void setPayrollCompanyOther(String payrollCompanyOther) {
         this.payrollCompanyOther = payrollCompanyOther;
+    }
+
+    public boolean isDojLeadApproved() {
+        return dojLeadApproved;
+    }
+
+    public void setDojLeadApproved(boolean dojLeadApproved) {
+        this.dojLeadApproved = dojLeadApproved;
+    }
+
+    public boolean isDojHrApproved() {
+        return dojHrApproved;
+    }
+
+    public void setDojHrApproved(boolean dojHrApproved) {
+        this.dojHrApproved = dojHrApproved;
+    }
+
+    public boolean isProjectEndLeadApproved() {
+        return projectEndLeadApproved;
+    }
+
+    public void setProjectEndLeadApproved(boolean projectEndLeadApproved) {
+        this.projectEndLeadApproved = projectEndLeadApproved;
+    }
+
+    public boolean isProjectEndHrApproved() {
+        return projectEndHrApproved;
+    }
+
+    public void setProjectEndHrApproved(boolean projectEndHrApproved) {
+        this.projectEndHrApproved = projectEndHrApproved;
     }
 
     public ProjectEndStatus getProjectEndStatus() {

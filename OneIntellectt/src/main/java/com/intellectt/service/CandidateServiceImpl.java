@@ -83,6 +83,9 @@ public class CandidateServiceImpl implements CandidateService {
     static final String PAYROLL_OTHER = "Other";
     static final int MAX_PAYROLL_OTHER_LENGTH = 100;
 
+    /** HR, Contracts, Payroll and Accounts: the four mailboxes that hear about most workflow events. */
+    private static final List<Role> ALL_FOUR_ROLES = List.of(Role.HR, Role.CONTRACTS, Role.PAYROLL, Role.ACCOUNTS);
+
     /** Largest page the list endpoint will return. */
     private static final int MAX_PAGE_SIZE = 100;
 
@@ -375,15 +378,18 @@ public class CandidateServiceImpl implements CandidateService {
             c = candidateRepository.save(c);
             recordAction(c, actor, stage, ActionType.APPROVE, comment);
             if (c.getStatus() == CandidateStatus.COMPLETED) {
-                // Everyone has approved: tell the team (and the recruiter) the DOJ can be approved.
+                // Everyone has approved: tell everyone (the recruiter too) the DOJ can be approved.
                 List<User> team = new ArrayList<>(approvers(c));
                 if (c.getSubmittedBy() != null) {
                     team.add(c.getSubmittedBy());
                 }
-                emailService.notifyStage(emailEntities(c), List.of(), team,
+                emailService.notifyStage(emailEntities(c), ALL_FOUR_ROLES, team,
                         "Candidate fully approved: " + c.getCandidateName(),
-                        emailHtml("HR, Contracts, Payroll and Accounts have all approved '" + c.getCandidateName()
-                                + "'. The Date of Joining can now be approved.", c));
+                        emailHtml(actor.getFullName() + " (" + label + ") approved '" + c.getCandidateName()
+                                + "'. HR, Contracts, Payroll and Accounts have all approved. The Date of Joining can now be approved"
+                                + " by the Sales Lead / Sales Manager and HR.", c));
+            } else {
+                notifyBranchApproved(c, actor, label, c.getStatus());
             }
         } else {
             requireComment(comment, label + " decline");
@@ -409,82 +415,128 @@ public class CandidateServiceImpl implements CandidateService {
     @Transactional
     public Candidate approveDoj(Long id, User actor, String comment) {
         Candidate c = getById(id);
-        assertTeamApprover(actor, c);
+        boolean hr = actor.getRole() == Role.HR;
+        if (hr) {
+            if (!canView(actor, c)) {
+                throw new ForbiddenException("You are not allowed to approve this candidate's Date of Joining");
+            }
+        } else {
+            assertTeamApprover(actor, c); // the team's own Sales Lead / Sales Manager
+        }
         // The Sales Lead / Manager must approve the candidate first; the DOJ approval is a
         // separate, individual action that only becomes available afterwards.
         if (c.getStatus() == CandidateStatus.PENDING_SALES_LEAD_APPROVAL
                 || c.getStatus() == CandidateStatus.SALES_LEAD_DECLINED) {
             throw new BadRequestException("Approve the candidate before approving the Date of Joining");
         }
+        if (c.getStatus() == CandidateStatus.DROPPED_OUT || c.getStatus() == CandidateStatus.OVERRIDE_REJECTED) {
+            throw new BadRequestException("This candidate is no longer going ahead");
+        }
+        if (c.getDojStatus() == DojStatus.APPROVED) {
+            throw new BadRequestException("The Date of Joining is already approved");
+        }
         if (c.getDojStatus() != DojStatus.RAISED) {
             throw new BadRequestException(
                     "There is no Date of Joining to approve (the recruiter must provide one)");
         }
-        c.setDojStatus(DojStatus.APPROVED);
+        // TWO approvals are needed: the Sales Lead / Manager and HR. Each one approves once.
+        if (hr ? c.isDojHrApproved() : c.isDojLeadApproved()) {
+            throw new BadRequestException("You have already approved the Date of Joining; it is waiting for "
+                    + (hr ? "the Sales Lead / Sales Manager" : "HR"));
+        }
+        if (hr) {
+            c.setDojHrApproved(true);
+        } else {
+            c.setDojLeadApproved(true);
+        }
+        boolean both = c.isDojLeadApproved() && c.isDojHrApproved();
+        if (both) {
+            c.setDojStatus(DojStatus.APPROVED);
+        }
         c = candidateRepository.save(c);
-        recordAction(c, actor, Stage.DOJ, ActionType.APPROVE_DOJ, comment);
+        recordAction(c, actor, Stage.DOJ, ActionType.APPROVE_DOJ,
+                (hr ? "HR approved" : roleLabel(actor) + " approved") + (isBlank(comment) ? "" : ". " + comment));
 
-        String subject = "Date of Joining confirmed: " + c.getCandidateName();
-        String body = emailHtml(actor.getFullName() + " approved the Date of Joining ("
-                + c.getDojDate() + ") for '" + c.getCandidateName() + "'.", c);
-        emailService.notifyStage(emailEntities(c), List.of(Role.PAYROLL, Role.ACCOUNTS),
-                users(c.getSubmittedBy()), subject, body);
+        // Email everyone in the loop: HR, Contracts, Payroll, Accounts (+ Super Admin), the team's Sales Lead and
+        // Sales Manager and the recruiter.
+        String by = hr ? "HR" : roleLabel(actor);
+        String subject = both ? "Date of Joining approved: " + c.getCandidateName()
+                : "Date of Joining approved by " + by + ": " + c.getCandidateName();
+        String body = emailHtml(actor.getFullName() + " (" + by + ") approved the Date of Joining (" + c.getDojDate()
+                + ") of '" + c.getCandidateName() + "'. "
+                + (both ? "HR and the Sales Lead / Sales Manager have both approved, so the Date of Joining is approved."
+                        : "It is now waiting for " + (hr ? "the Sales Lead / Sales Manager" : "HR") + "."), c);
+        emailService.notifyStage(emailEntities(c), ALL_FOUR_ROLES, loopPeople(c, actor), subject, body);
         return c;
     }
 
     // ---------------------------------------------------------------------
-    // Project end date (only after the DOJ is approved; approved or declined like the DOJ)
+    // Project end date (only after the DOJ is approved; needs BOTH the Sales Lead / Manager and HR)
     // ---------------------------------------------------------------------
 
+    private static final String LEAD_SIDE = "the Sales Lead / Sales Manager";
+
     /**
-     * The recruiter RAISES a project end date (it then waits for approval); the team's Sales Lead /
-     * Sales Manager or the Super Admin entering one is the approval itself, and the candidate exits.
+     * The recruiter RAISES a project end date. A Sales Lead / Sales Manager or HR entering one counts as their own
+     * approval; the date is approved (and the candidate exits) only when BOTH have approved. The Super Admin's
+     * entry settles it alone. A new date always restarts the approvals.
      */
     @Override
     @Transactional
     public Candidate setProjectEndDate(Long id, User actor, java.time.LocalDate date, String comment) {
         Candidate c = getById(id);
-        boolean recruiter = actor.getRole() == Role.RECRUITER;
+        Role role = actor.getRole();
+        boolean recruiter = role == Role.RECRUITER;
         if (recruiter) {
             if (c.getSubmittedBy() == null || !c.getSubmittedBy().getId().equals(actor.getId())) {
                 throw new ForbiddenException("You can only raise the project end date of your own candidates");
             }
-        } else if (actor.getRole() != Role.SUPER_ADMIN) {
+        } else if (role == Role.HR) {
+            if (!canView(actor, c)) {
+                throw new ForbiddenException("You are not allowed to set this candidate's project end date");
+            }
+        } else if (role != Role.SUPER_ADMIN) {
             assertTeamApprover(actor, c); // the team's own Sales Lead / Sales Manager
         }
         if (date == null) {
             throw new BadRequestException("Project end date is required");
         }
-        if (c.getDojStatus() != DojStatus.APPROVED || c.getStatus() == CandidateStatus.OVERRIDE_REJECTED) {
+        if (c.getDojStatus() != DojStatus.APPROVED || c.getStatus() == CandidateStatus.OVERRIDE_REJECTED
+                || c.getStatus() == CandidateStatus.DROPPED_OUT) {
             throw new BadRequestException("The project end date can be set once the Date of Joining is approved");
         }
         if (c.getDojDate() != null && date.isBefore(c.getDojDate())) {
             throw new BadRequestException("The project end date can't be before the Date of Joining");
         }
         String note = "Project end date: " + date + (isBlank(comment) ? "" : ". " + comment);
+        boolean wasApproved = c.getProjectEndStatus() == ProjectEndStatus.APPROVED;
+
+        if (recruiter && wasApproved) {
+            throw new BadRequestException("The project end date is already approved; ask your Sales Lead, Sales Manager or HR to change it");
+        }
+        // a new date restarts the approvals
+        c.setProjectEndDate(date);
+        c.setProjectEndLeadApproved(false);
+        c.setProjectEndHrApproved(false);
 
         if (recruiter) {
-            if (c.getProjectEndStatus() == ProjectEndStatus.APPROVED) {
-                throw new BadRequestException("The project end date is already approved; ask your Sales Lead or Sales Manager to change it");
-            }
-            c.setProjectEndDate(date);
             c.setProjectEndStatus(ProjectEndStatus.RAISED);
             c = candidateRepository.save(c);
             recordAction(c, actor, Stage.PROJECT_END, ActionType.RAISE_PROJECT_END, note);
-            // the approvers (and the Super Admin) are asked to approve or decline it
-            emailService.notifyStage(emailEntities(c), List.of(), approvers(c),
+            // the Sales Lead, Sales Manager and HR are asked to approve or decline it
+            emailService.notifyStage(emailEntities(c), List.of(Role.HR), approvers(c),
                     "Project end date to approve: " + c.getCandidateName(),
                     emailHtml(actor.getFullName() + " (recruiter) raised the project end date of '"
-                            + c.getCandidateName() + "': " + date + ". Please approve or decline it.", c));
+                            + c.getCandidateName() + "': " + date + ". The Sales Lead / Sales Manager and HR must both approve it.", c));
             return c;
         }
 
-        boolean changed = c.getProjectEndStatus() == ProjectEndStatus.APPROVED;
-        c.setProjectEndDate(date);
-        c.setProjectEndStatus(ProjectEndStatus.APPROVED);
+        markProjectEndSide(c, actor);
+        c.setProjectEndStatus(c.isProjectEndLeadApproved() && c.isProjectEndHrApproved()
+                ? ProjectEndStatus.APPROVED : ProjectEndStatus.RAISED);
         c = candidateRepository.save(c);
         recordAction(c, actor, Stage.PROJECT_END, ActionType.SET_PROJECT_END, note);
-        notifyProjectEndApproved(c, actor, changed);
+        notifyProjectEndProgress(c, actor, wasApproved);
         return c;
     }
 
@@ -492,7 +544,12 @@ public class CandidateServiceImpl implements CandidateService {
     @Transactional
     public Candidate decideProjectEnd(Long id, User actor, boolean approve, String comment) {
         Candidate c = getById(id);
-        if (actor.getRole() != Role.SUPER_ADMIN) {
+        Role role = actor.getRole();
+        if (role == Role.HR) {
+            if (!canView(actor, c)) {
+                throw new ForbiddenException("You are not allowed to decide this candidate's project end date");
+            }
+        } else if (role != Role.SUPER_ADMIN) {
             assertTeamApprover(actor, c);
         }
         if (c.getProjectEndStatus() != ProjectEndStatus.RAISED) {
@@ -500,24 +557,31 @@ public class CandidateServiceImpl implements CandidateService {
         }
         String date = String.valueOf(c.getProjectEndDate());
         if (approve) {
-            c.setProjectEndStatus(ProjectEndStatus.APPROVED);
+            boolean hr = role == Role.HR;
+            if (role != Role.SUPER_ADMIN && (hr ? c.isProjectEndHrApproved() : c.isProjectEndLeadApproved())) {
+                throw new BadRequestException("You have already approved the project end date; it is waiting for "
+                        + (hr ? LEAD_SIDE : "HR"));
+            }
+            markProjectEndSide(c, actor);
+            boolean both = c.isProjectEndLeadApproved() && c.isProjectEndHrApproved();
+            if (both) {
+                c.setProjectEndStatus(ProjectEndStatus.APPROVED);
+            }
             c = candidateRepository.save(c);
             recordAction(c, actor, Stage.PROJECT_END, ActionType.APPROVE_PROJECT_END,
                     "Project end date: " + date + (isBlank(comment) ? "" : ". " + comment));
-            notifyProjectEndApproved(c, actor, false);
+            notifyProjectEndProgress(c, actor, false);
         } else {
             requireComment(comment, "project end date decline");
             c.setProjectEndStatus(ProjectEndStatus.DECLINED);
+            c.setProjectEndLeadApproved(false);
+            c.setProjectEndHrApproved(false);
             c = candidateRepository.save(c);
             recordAction(c, actor, Stage.PROJECT_END, ActionType.DECLINE_PROJECT_END,
                     "Project end date: " + date + ". " + comment);
-            // the recruiter (who raised it) and the other approver hear about it; Super Admin copied
-            List<User> people = new ArrayList<>(otherApprovers(c, actor));
-            if (c.getSubmittedBy() != null) {
-                people.add(c.getSubmittedBy());
-            }
-            String who = actor.getRole() == Role.SUPER_ADMIN ? "Super Admin" : roleLabel(actor);
-            emailService.notifyStage(emailEntities(c), List.of(), people,
+            // the recruiter (who raised it), HR and the Sales Lead / Manager hear about it; Super Admin copied
+            String who = role == Role.SUPER_ADMIN ? "Super Admin" : role == Role.HR ? "HR" : roleLabel(actor);
+            emailService.notifyStage(emailEntities(c), List.of(Role.HR), loopPeople(c, actor),
                     "Project end date declined: " + c.getCandidateName(),
                     emailHtml(actor.getFullName() + " (" + who + ") declined the project end date " + date + " of '"
                             + c.getCandidateName() + "'. Reason: " + comment, c));
@@ -525,18 +589,86 @@ public class CandidateServiceImpl implements CandidateService {
         return c;
     }
 
-    /** The project end date is approved: the candidate has exited. HR, Contracts, Payroll, Accounts and everyone else hear it. */
-    private void notifyProjectEndApproved(Candidate c, User actor, boolean changed) {
-        List<User> people = new ArrayList<>(otherApprovers(c, actor));
-        if (c.getSubmittedBy() != null && !c.getSubmittedBy().getId().equals(actor.getId())) {
-            people.add(c.getSubmittedBy());
+    /** Records that this person's side (Sales Lead / Manager, HR; the Super Admin counts as both) has approved. */
+    private void markProjectEndSide(Candidate c, User actor) {
+        switch (actor.getRole()) {
+            case HR -> c.setProjectEndHrApproved(true);
+            case SUPER_ADMIN -> {
+                c.setProjectEndLeadApproved(true);
+                c.setProjectEndHrApproved(true);
+            }
+            default -> c.setProjectEndLeadApproved(true);
         }
-        String who = actor.getRole() == Role.SUPER_ADMIN ? "Super Admin" : roleLabel(actor);
-        emailService.notifyStage(emailEntities(c), List.of(Role.HR, Role.CONTRACTS, Role.PAYROLL, Role.ACCOUNTS),
-                people, "Project end date " + (changed ? "changed" : "approved") + ": " + c.getCandidateName(),
-                emailHtml(actor.getFullName() + " (" + who + ") " + (changed ? "changed" : "approved")
-                        + " the project end date of '" + c.getCandidateName() + "': " + c.getProjectEndDate()
-                        + ". The candidate has exited.", c));
+    }
+
+    /** Everyone in the loop hears either "approved: the candidate has exited" or "approved by X, waiting for Y". */
+    private void notifyProjectEndProgress(Candidate c, User actor, boolean changed) {
+        String who = actor.getRole() == Role.SUPER_ADMIN ? "Super Admin"
+                : actor.getRole() == Role.HR ? "HR" : roleLabel(actor);
+        boolean done = c.getProjectEndStatus() == ProjectEndStatus.APPROVED;
+        String subject = done ? "Project end date " + (changed ? "changed" : "approved") + ": " + c.getCandidateName()
+                : "Project end date approved by " + who + ": " + c.getCandidateName();
+        String text = actor.getFullName() + " (" + who + ") " + (done && changed ? "changed" : "approved")
+                + " the project end date of '" + c.getCandidateName() + "': " + c.getProjectEndDate() + ". "
+                + (done ? "The Sales Lead / Sales Manager and HR have both approved, so the candidate has exited."
+                        : "It is now waiting for " + (c.isProjectEndHrApproved() ? LEAD_SIDE : "HR") + ".");
+        emailService.notifyStage(emailEntities(c), ALL_FOUR_ROLES, loopPeople(c, actor), subject, emailHtml(text, c));
+    }
+
+    // ---------------------------------------------------------------------
+    // Drop out / back out (after the DOJ is approved)
+    // ---------------------------------------------------------------------
+
+    @Override
+    @Transactional
+    public Candidate dropOut(Long id, User actor, String comment) {
+        Candidate c = getById(id);
+        Role role = actor.getRole();
+        switch (role) {
+            case SALES_LEAD, SALES_MANAGER -> assertTeamApprover(actor, c);
+            case HR, CONTRACTS, PAYROLL, ACCOUNTS -> {
+                if (!canView(actor, c)) {
+                    throw new ForbiddenException("You are not allowed to act on this candidate");
+                }
+            }
+            case SUPER_ADMIN -> { }
+            default -> throw new ForbiddenException("Only the Sales Lead, Sales Manager, HR, Contracts, Payroll, Accounts or the Super Admin can record a drop out");
+        }
+        requireComment(comment, "drop out / back out");
+        if (c.getDojStatus() != DojStatus.APPROVED) {
+            throw new BadRequestException("A drop out / back out can be recorded once the Date of Joining is approved");
+        }
+        if (c.getStatus() == CandidateStatus.DROPPED_OUT || c.getStatus() == CandidateStatus.OVERRIDE_REJECTED) {
+            throw new BadRequestException("This candidate is no longer going ahead");
+        }
+        if (c.getProjectEndStatus() == ProjectEndStatus.APPROVED) {
+            throw new BadRequestException("The candidate has already exited (the project end date is approved)");
+        }
+        c.setStatus(CandidateStatus.DROPPED_OUT);
+        c.setLastDeclineReason(comment);
+        c = candidateRepository.save(c);
+        recordAction(c, actor, stageFor(actor), ActionType.DROP_OUT, comment);
+
+        String who = role == Role.SUPER_ADMIN ? "Super Admin" : role == Role.HR ? "HR"
+                : role == Role.SALES_LEAD || role == Role.SALES_MANAGER ? roleLabel(actor)
+                : role.name().charAt(0) + role.name().substring(1).toLowerCase(java.util.Locale.ROOT);
+        emailService.notifyStage(emailEntities(c), ALL_FOUR_ROLES, loopPeople(c, actor),
+                "Candidate dropped out: " + c.getCandidateName(),
+                emailHtml(actor.getFullName() + " (" + who + ") recorded that '" + c.getCandidateName()
+                        + "' has dropped out / backed out after joining. Reason: " + comment, c));
+        return c;
+    }
+
+    private Stage stageFor(User actor) {
+        return switch (actor.getRole()) {
+            case SALES_LEAD, SALES_MANAGER -> Stage.SALES_LEAD;
+            case HR -> Stage.HR;
+            case CONTRACTS -> Stage.CONTRACTS;
+            case PAYROLL -> Stage.PAYROLL;
+            case ACCOUNTS -> Stage.ACCOUNTS;
+            case SUPER_ADMIN -> Stage.SUPER_ADMIN;
+            default -> Stage.RECRUITER;
+        };
     }
 
     // ---------------------------------------------------------------------
@@ -580,6 +712,11 @@ public class CandidateServiceImpl implements CandidateService {
                 && !input.getSsnNo().equals(storedSsn);
         if (!ssnReplaced) {
             c.setSsnNo(storedSsn);
+        }
+        // a new DOJ date restarts a DOJ approval that is still pending (an approved DOJ stays approved)
+        if (c.getDojStatus() != DojStatus.APPROVED && !java.util.Objects.equals(before.get("Date of Joining"), show(c.getDojDate()))) {
+            c.setDojLeadApproved(false);
+            c.setDojHrApproved(false);
         }
         // keep the DOJ state in step with the date (an approved DOJ stays approved)
         if (c.getDojStatus() == DojStatus.NOT_RAISED && c.getDojDate() != null) {
@@ -685,7 +822,8 @@ public class CandidateServiceImpl implements CandidateService {
         if (actor.getRole() != Role.SUPER_ADMIN) {
             assertTeamApprover(actor, c); // the team's own Sales Lead / Sales Manager
         }
-        if (c.getStatus() == CandidateStatus.SALES_LEAD_DECLINED || c.getStatus() == CandidateStatus.OVERRIDE_REJECTED) {
+        if (c.getStatus() == CandidateStatus.SALES_LEAD_DECLINED || c.getStatus() == CandidateStatus.OVERRIDE_REJECTED
+                || c.getStatus() == CandidateStatus.DROPPED_OUT) {
             throw new BadRequestException("The rates of a declined candidate can't be changed");
         }
         requireComment(comment, "rate change");
@@ -807,10 +945,11 @@ public class CandidateServiceImpl implements CandidateService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Object> search(User actor, String search, String status, int page, int size) {
+    public Map<String, Object> search(User actor, String search, String status, boolean dojToday, int page, int size) {
         Specification<Candidate> spec = CandidateQueries.visibleTo(actor)
                 .and(CandidateQueries.matches(search))
-                .and(CandidateQueries.hasStatusKey(status));
+                .and(CandidateQueries.hasStatusKey(status))
+                .and(CandidateQueries.dojToday(dojToday));
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
                 Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id"))); // latest activity first
         Page<Candidate> result = candidateRepository.findAll(spec, pageable);
@@ -841,7 +980,7 @@ public class CandidateServiceImpl implements CandidateService {
                 .groupBy(root.get("status"), root.get("contractsDecision"), root.get("dojStatus"), exitedFlag);
 
         Map<String, Long> counts = new LinkedHashMap<>();
-        for (String group : List.of("pending", "approved", "declined", "joined", "exited")) {
+        for (String group : List.of("pending", "approved", "declined", "joined", "exited", "dropouts")) {
             counts.put(group, 0L);
         }
         for (Tuple t : entityManager.createQuery(q).getResultList()) {
@@ -853,6 +992,9 @@ public class CandidateServiceImpl implements CandidateService {
                 }
             });
         }
+        // how many of the visible candidates join today (the "joining today" card for Lead / Manager / HR)
+        counts.put("dojToday", candidateRepository.count(
+                CandidateQueries.visibleTo(actor).and(CandidateQueries.dojToday(true))));
         return counts;
     }
 
@@ -945,8 +1087,8 @@ public class CandidateServiceImpl implements CandidateService {
     private void notifyBranchApproved(Candidate c, User actor, String team, CandidateStatus before) {
         boolean nowOpen = before != CandidateStatus.IN_PAYROLL_ACCOUNTS_REVIEW
                 && c.getStatus() == CandidateStatus.IN_PAYROLL_ACCOUNTS_REVIEW;
-        emailService.notifyStage(emailEntities(c), List.of(Role.HR, Role.CONTRACTS, Role.PAYROLL, Role.ACCOUNTS),
-                List.of(), team + " approved candidate: " + c.getCandidateName(),
+        emailService.notifyStage(emailEntities(c), ALL_FOUR_ROLES,
+                approvers(c), team + " approved candidate: " + c.getCandidateName(),
                 emailHtml(actor.getFullName() + " (" + team + ") approved '" + c.getCandidateName() + "'."
                         + (nowOpen ? " HR and Contracts have both approved, so it is now open to Payroll and Accounts." : ""), c));
     }
@@ -965,6 +1107,16 @@ public class CandidateServiceImpl implements CandidateService {
             entities.add(payroll);
         }
         return entities;
+    }
+
+    /** The team's Sales Lead and Sales Manager plus the recruiter, except the person who just acted. */
+    private List<User> loopPeople(Candidate c, User actor) {
+        List<User> people = new ArrayList<>(approvers(c));
+        if (c.getSubmittedBy() != null) {
+            people.add(c.getSubmittedBy());
+        }
+        people.removeIf(u -> u.getId().equals(actor.getId()));
+        return people;
     }
 
     /** The team's Sales Lead / Manager other than {@code actor} (so they hear what their counterpart did). */

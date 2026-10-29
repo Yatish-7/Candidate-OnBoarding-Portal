@@ -2,8 +2,10 @@
 
 PostgreSQL 16, database `Intellectt` (tests: `intellectt_test`; load tests:
 `intellectt_load`). Tables are created and extended by Hibernate
-(`spring.jpa.hibernate.ddl-auto=update`) from the JPA entities in
-`src/main/java/com/intellectt/model`.
+from the JPA entities in `src/main/java/com/intellectt/model`. **The app runs with `spring.jpa.hibernate.ddl-auto=validate`
+(environment variable `DDL_AUTO`)**: it checks the schema at startup and refuses to start if a table or column is missing, so every
+schema change is a SQL script in `docs/*-migration.sql` that must be run on the database BEFORE the new version is deployed. A brand-new
+local database can be created once with `DDL_AUTO=update` (the tests do that against `intellectt_test`).
 
 ## 1. Entity-relationship diagram
 
@@ -184,8 +186,8 @@ Plus the unique indexes on `users.email`, `teams.name`, `teams.sales_lead_id` an
 
 ## 5. Schema changes and migrations
 
-`ddl-auto=update` adds new tables and columns automatically, but it does **not** change
-existing constraints or drop anything. Changes that needed manual SQL so far:
+With `ddl-auto=validate` (the default now) the app changes nothing itself: new columns, tables and CHECK constraints all come from
+the SQL scripts below. (`ddl-auto=update` would add columns and tables on its own but never changes constraints.) Changes that needed manual SQL so far:
 
 Run these once per database (the real one, `intellectt_test`, `intellectt_load`), **in this order**,
 after a backup. Each is idempotent (`DROP CONSTRAINT IF EXISTS`, then re-created):
@@ -198,10 +200,12 @@ after a backup. Each is idempotent (`DROP CONSTRAINT IF EXISTS`, then re-created
 | 4 | `docs/rate-change-migration.sql` | action `RATE_CHANGE` |
 | 5 | `docs/candidate-edit-migration.sql` | action `EDIT` (HR edits details) |
 | 6 | `docs/project-end-approval-migration.sql` | actions `RAISE_PROJECT_END`, `APPROVE_PROJECT_END`, `DECLINE_PROJECT_END` |
+| 7 | `docs/dropout-doj-migration.sql` | **columns** `doj_lead_approved`, `doj_hr_approved`, `project_end_lead_approved`, `project_end_hr_approved` (+ the `_aud` copies); status `DROPPED_OUT`; action `DROP_OUT` |
 
-(The `ADMIN` role was added earlier by hand the same way.) The new columns themselves
-(`teams.sales_manager_id`, `payroll_decision`, `accounts_decision`, `project_end_date`, the intake fields)
-are added by `ddl-auto=update` on the next start. `docs/sample-candidates.sql` inserts two sample
+(The `ADMIN` role was added earlier by hand the same way.) Scripts 1-6 only changed constraints because their columns
+(`teams.sales_manager_id`, `payroll_decision`, `accounts_decision`, `project_end_date`, `project_end_status`, the intake fields)
+were created while the app still ran with `ddl-auto=update`; a database built from the current entities already has them. Script 7 also adds columns,
+because the app no longer adds them itself. `docs/sample-candidates.sql` inserts two sample
 candidates directly (no email, no audit entries)
 
 At startup, `SsnEncryptionMigration` encrypts any SSN still stored as plain text in

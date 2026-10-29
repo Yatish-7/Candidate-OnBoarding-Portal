@@ -44,14 +44,15 @@ public class CandidateController {
     }
 
     // ----- Reads -----
-    /** One page of candidates: ?page=0&size=20&search=&status= (page is 0-based, size max 100). */
+    /** One page of candidates: ?page=0&size=20&search=&status=&dojToday= (page is 0-based, size max 100). */
     @GetMapping
     public ResponseEntity<Map<String, Object>> list(@RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "false") boolean dojToday,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal AppUserPrincipal principal) {
-        return ResponseEntity.ok(candidateService.search(principal.getUser(), search, status, page, size));
+        return ResponseEntity.ok(candidateService.search(principal.getUser(), search, status, dojToday, page, size));
     }
 
     /** Dashboard counters {pending, approved, declined, joined, exited}, computed on the server. */
@@ -192,6 +193,14 @@ public class CandidateController {
             @RequestParam(required = false) String comment,
             @AuthenticationPrincipal AppUserPrincipal principal) {
         return ResponseEntity.ok(candidateService.decideProjectEnd(id, principal.getUser(), false, comment));
+    }
+
+    // ----- Drop out / back out (after the DOJ is approved; comment required) -----
+    @PostMapping("/{id}/drop-out")
+    public ResponseEntity<Candidate> dropOut(@PathVariable Long id,
+            @RequestParam(required = false) String comment,
+            @AuthenticationPrincipal AppUserPrincipal principal) {
+        return ResponseEntity.ok(candidateService.dropOut(id, principal.getUser(), comment));
     }
 
     // ----- Super Admin override -----

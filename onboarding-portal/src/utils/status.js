@@ -29,6 +29,7 @@ export const STATUSES = {
   AWAITING_DOJ: { label: 'Approved — awaiting DOJ', color: 'cyan' },
   JOINED: { label: 'Joined', color: 'green' },
   EXITED: { label: 'Exited', color: 'magenta' },
+  DROPPED_OUT: { label: 'Dropped out / Backed out', color: 'default' },
   ADMIN_APPROVED: { label: 'Approved (Admin override)', color: 'green' },
   ADMIN_REJECTED: { label: 'Rejected (Admin override)', color: 'red' },
 }
@@ -45,6 +46,7 @@ export function getStatusKey(candidate) {
 
   if (override?.decision === 'REJECTED') return 'ADMIN_REJECTED'
   if (override?.decision === 'APPROVED') return 'ADMIN_APPROVED'
+  if (candidate.backendStatus === 'DROPPED_OUT') return 'DROPPED_OUT'
   if (stages.salesLead === 'DECLINED') return 'DECLINED'
   if (isAnyDeclined(stages)) return 'DECLINED'
   // An approved project end date (the recruiter raises it; Lead / Manager / Super Admin approve) means the candidate has exited
@@ -77,6 +79,7 @@ export const SUMMARY_GROUPS = {
   declined: ['DECLINED', 'ADMIN_REJECTED'],
   joined: ['JOINED'],
   exited: ['EXITED'],
+  dropouts: ['DROPPED_OUT'],
 }
 
 // Stage names used in the approval trail (the "stage" field of each entry)

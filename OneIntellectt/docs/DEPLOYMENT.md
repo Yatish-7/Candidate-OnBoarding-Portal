@@ -151,8 +151,9 @@ server {
 ```
 
 `X-Forwarded-For` is required: sign-in lock-outs are counted per client IP. The backend
-trusts this header only from private/local addresses (`server.forward-headers-strategy=native`).
-If nginx runs on a public IP, also set `server.tomcat.remoteip.internal-proxies`.
+uses it as configured by `server.forward-headers-strategy` (currently `framework`, which believes the header from any caller, so the
+proxy must overwrite it; with `native` it is trusted only from private/local addresses, and if nginx then runs on a public IP also set
+`server.tomcat.remoteip.internal-proxies`).
 
 ## 7. After the first start
 
@@ -181,7 +182,7 @@ If nginx runs on a public IP, also set `server.tomcat.remoteip.internal-proxies`
 - [ ] nginx passes `X-Forwarded-For`
 - [ ] `app.entity-mail.mailbox-routing=true` and `app.entity-mail.super-admin-address` blank (the testing switches are in the normal position)
 - [ ] Backups scheduled and a restore tested
-- [ ] SQL migrations from `docs/` applied, in order, on the production database (after a backup): `sales-manager-migration.sql`, `payroll-accounts-migration.sql`, `project-end-migration.sql`, `rate-change-migration.sql`, `candidate-edit-migration.sql`, `project-end-approval-migration.sql`
+- [ ] SQL migrations from `docs/` applied, in order, on the production database (after a backup): `sales-manager-migration.sql`, `payroll-accounts-migration.sql`, `project-end-migration.sql`, `rate-change-migration.sql`, `candidate-edit-migration.sql`, `project-end-approval-migration.sql`, `dropout-doj-migration.sql` (this one adds columns: the app validates the schema and will not start without them)
 - [ ] Super Admin password changed; MFA plan agreed (not built yet)
 - [ ] `./mvnw test` green and `npm audit` clean on the release build
 - [ ] Organisational items in [COMPLIANCE.md](../COMPLIANCE.md) §3 assigned an owner

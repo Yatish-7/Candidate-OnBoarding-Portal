@@ -26,6 +26,9 @@ public enum CandidateStatus {
     /** HR, Contracts, Payroll and Accounts all approved; the candidate review chain is complete. */
     COMPLETED,
 
+    /** The candidate left after the DOJ was approved (drop out / back out); shown on the Super Admin's Drop Outs card. */
+    DROPPED_OUT,
+
     /** Super Admin override approval; candidate completely approved. */
     OVERRIDE_APPROVED,
 

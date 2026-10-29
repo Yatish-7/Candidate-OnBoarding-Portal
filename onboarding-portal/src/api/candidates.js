@@ -120,6 +120,7 @@ const ACTION_MAP = {
   APPROVE_DOJ: 'DOJ_SET',
   SET_PROJECT_END: 'PROJECT_END_SET',
   RAISE_PROJECT_END: 'PROJECT_END_RAISED',
+  DROP_OUT: 'DROPPED_OUT',
   APPROVE_PROJECT_END: 'PROJECT_END_APPROVED',
   DECLINE_PROJECT_END: 'PROJECT_END_DECLINED',
   RATE_CHANGE: 'RATES_CHANGED',
@@ -144,8 +145,9 @@ function mapTrail(actions) {
 // GET /api/candidates?search=&status=&page=&size= → one page, already searched,
 // filtered and paged by the server: { content, totalElements, totalPages, number, size }.
 // (status is a display-status key such as "PENDING_HR"; see utils/status.js)
-export async function getCandidates({ search = '', status = '', page = 0, size = 10 }) {
+export async function getCandidates({ search = '', status = '', dojToday = false, page = 0, size = 10 }) {
   const params = { page, size }
+  if (dojToday) params.dojToday = true // only candidates whose Date of Joining is today
   if (search) params.search = search
   if (status) params.status = status
   const response = await client.get('/api/candidates', { params })
@@ -232,6 +234,9 @@ export async function setProjectEnd(id, date, comment) {
 // The Lead / Manager / Super Admin approve or decline the date the recruiter raised (decline needs a comment).
 export const approveProjectEnd = (id, comment) => post(id, 'project-end/approve', comment)
 export const declineProjectEnd = (id, comment) => post(id, 'project-end/decline', comment)
+// After the DOJ is approved, the Lead / Manager / HR / Contracts / Payroll / Accounts / Super Admin can record that the
+// candidate dropped out / backed out (comment required).
+export const dropOut = (id, comment) => post(id, 'drop-out', comment)
 export const setDoj = notSupported('Setting the DOJ after approval')
 export const overrideCandidate = (id, decision, comment) =>
   post(id, decision === 'REJECTED' ? 'override/decline' : 'override/approve', comment)

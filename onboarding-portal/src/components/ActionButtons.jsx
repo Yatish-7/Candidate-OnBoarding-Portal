@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Alert, App as AntApp, Button, DatePicker, Form, InputNumber, Radio, Space, Typography } from 'antd'
-import { CalendarOutlined, CheckOutlined, CloseOutlined, DollarOutlined, SafetyOutlined } from '@ant-design/icons'
+import { CalendarOutlined, CheckOutlined, CloseOutlined, DollarOutlined, SafetyOutlined, UserDeleteOutlined } from '@ant-design/icons'
 import * as api from '../api/candidates.js'
 import { useAuth } from '../context/AuthContext.js'
 import { formatDateTime } from '../utils/format.js'
@@ -14,6 +14,7 @@ import {
   canReviewHr,
   canChangeRates,
   canDecideProjectEnd,
+  canDropOut,
   canRaiseProjectEnd,
   canReviewPayroll,
   canSetProjectEnd,
@@ -92,10 +93,11 @@ function getActions(user, candidate) {
       (values) => api.declineAccounts(id, values.comment)),
 
     // The recruiter supplied the DOJ at intake; the Sales Lead approves it here.
+    // The DOJ needs the Sales Lead / Manager AND HR to approve; each approves once.
     approveAction('approveDoj', 'Approve DOJ', 'Approve date of joining',
       canApproveDoj(user, candidate),
       (values) => api.approveDoj(id, values.comment),
-      'Date of Joining approved — the candidate has joined.'),
+      'Date of Joining approval saved. It is approved once the Sales Lead / Manager and HR have both approved.'),
 
     // Rates can change mid-way (Sales Lead / Manager / Super Admin); a comment is required and everyone is emailed.
     {
@@ -133,12 +135,12 @@ function getActions(user, candidate) {
       success: 'Rates changed — everyone has been emailed.',
     },
 
-    // Project end date, only after the DOJ is approved: the recruiter raises it, the Lead / Manager /
-    // Super Admin approve or decline it (entering it as an approver is the approval). Approved = exited.
+    // Project end date, only after the DOJ is approved: the recruiter raises it; the Lead / Manager AND HR must both
+    // approve it (the Super Admin settles it alone); any of them can decline. Approved = exited.
     approveAction('approveProjectEnd', 'Approve project end date', 'Approve project end date',
       canDecideProjectEnd(user, candidate),
       (values) => api.approveProjectEnd(id, values.comment),
-      'Project end date approved — the candidate has exited.'),
+      'Project end date approval saved. It is approved once the Sales Lead / Manager and HR have both approved.'),
     declineAction('declineProjectEnd', 'Decline project end date', 'Decline project end date',
       canDecideProjectEnd(user, candidate),
       (values) => api.declineProjectEnd(id, values.comment),
@@ -172,6 +174,33 @@ function getActions(user, candidate) {
       success: isRecruiter
         ? 'Project end date raised — waiting for approval.'
         : 'Project end date saved — the candidate is now Exited and the team has been emailed.',
+    },
+
+    // After joining, if the candidate leaves in the middle of the project: recorded with a reason; they move to
+    // the Super Admin's Drop Outs / Back Outs card.
+    {
+      key: 'dropOut',
+      label: 'Drop out / Back out',
+      icon: <UserDeleteOutlined />,
+      danger: true,
+      allowed: canDropOut(user, candidate),
+      modal: {
+        title: 'Drop out / Back out',
+        okText: 'Record drop out',
+        danger: true,
+        commentRequired: true,
+        fields: (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+            title="The candidate left after joining"
+            description="They are moved to Drop Outs / Back Outs and everyone in the loop is emailed. Give the reason below."
+          />
+        ),
+      },
+      run: (values) => api.dropOut(id, values.comment),
+      success: 'Recorded — the candidate is now a drop out / back out and everyone has been emailed.',
     },
 
     {
