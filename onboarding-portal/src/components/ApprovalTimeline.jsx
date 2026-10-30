@@ -33,6 +33,58 @@ const ACTIONS = {
   COMMENT: { text: 'Commented', icon: <MessageOutlined />, color: '#94a3b8' },
 }
 
+// Splits an edit / rate-change comment ("Pay rate 80 → 90; Visa Status: H1B → GC. reason") into
+// {label, oldValue, newValue} rows plus any leftover text, so the old value can be shown next to the new one.
+function parseChanges(action, comment) {
+  let changesText = comment
+  let reason = ''
+  if (action === 'RATES_CHANGED') {
+    const at = comment.indexOf('. ')
+    if (at > 0) {
+      changesText = comment.slice(0, at)
+      reason = comment.slice(at + 2)
+    }
+  }
+  const rows = []
+  const others = []
+  for (const part of changesText.split('; ')) {
+    const arrow = part.indexOf(' → ')
+    if (arrow < 0) {
+      others.push(part)
+      continue
+    }
+    const left = part.slice(0, arrow)
+    const colon = left.indexOf(': ')
+    const space = left.search(/ \S+$/)
+    const cut = colon >= 0 ? colon : space
+    rows.push({
+      label: cut >= 0 ? left.slice(0, cut) : '',
+      oldValue: cut >= 0 ? left.slice(cut + (colon >= 0 ? 2 : 1)) : left,
+      newValue: part.slice(arrow + 3),
+    })
+  }
+  return { rows, others, reason }
+}
+
+// "Pay rate: 80 (old, struck through) → 90" for each changed field
+function ChangeList({ action, comment }) {
+  const { rows, others, reason } = parseChanges(action, comment)
+  return (
+    <div style={{ margin: '6px 0', padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8 }}>
+      {rows.map((r, i) => (
+        <div key={i}>
+          <Typography.Text strong>{r.label}: </Typography.Text>
+          <Typography.Text delete type="secondary">{r.oldValue}</Typography.Text> → <Typography.Text strong>{r.newValue}</Typography.Text>
+        </div>
+      ))}
+      {others.map((t, i) => (
+        <div key={`o${i}`}>{t}</div>
+      ))}
+      {reason && <div style={{ marginTop: 4, color: '#64748b' }}>Reason: {reason}</div>}
+    </div>
+  )
+}
+
 // The approval trail: who did what, at which stage, their comment, when, and who was emailed.
 // Oldest at the top, newest at the bottom.
 export default function ApprovalTimeline({ trail }) {
@@ -54,7 +106,10 @@ export default function ApprovalTimeline({ trail }) {
               <Typography.Text type="secondary"> · {STAGE_LABELS[entry.stage] ?? entry.stage} stage</Typography.Text>
             )}
           </div>
-          {entry.comment && (
+          {entry.comment && (entry.action === 'DETAILS_EDITED' || entry.action === 'RATES_CHANGED') && (
+            <ChangeList action={entry.action} comment={entry.comment} />
+          )}
+          {entry.comment && entry.action !== 'DETAILS_EDITED' && entry.action !== 'RATES_CHANGED' && (
             <div
               style={{
                 margin: '6px 0',
@@ -79,4 +134,27 @@ export default function ApprovalTimeline({ trail }) {
   })
 
   return <Timeline items={items} />
+}
+
+// Everyone who can open the candidate sees this: each edit / rate change, who made it, when, and old → new
+export function ChangeHistory({ trail }) {
+  const changes = trail.filter((e) => e.action === 'DETAILS_EDITED' || e.action === 'RATES_CHANGED')
+  if (changes.length === 0) {
+    return <Typography.Text type="secondary">No changes yet. Edits and rate changes will be listed here.</Typography.Text>
+  }
+  return (
+    <div>
+      {[...changes].reverse().map((entry) => (
+        <div key={entry.id} style={{ marginBottom: 12 }}>
+          <div>
+            <Typography.Text strong>{entry.action === 'RATES_CHANGED' ? 'Rates changed' : 'Details edited'}</Typography.Text>{' '}
+            by <Typography.Text strong>{entry.actorName}</Typography.Text>{' '}
+            <Tag variant="filled">{ROLE_LABELS[entry.actorRole] ?? entry.actorRole}</Tag>
+          </div>
+          <div style={{ fontSize: 12, color: '#94a3b8' }}>{formatDateTime(entry.createdAt)}</div>
+          {entry.comment && <ChangeList action={entry.action} comment={entry.comment} />}
+        </div>
+      ))}
+    </div>
+  )
 }

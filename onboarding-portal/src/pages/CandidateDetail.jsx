@@ -12,7 +12,7 @@ import {
 } from '@ant-design/icons'
 import { getCandidate } from '../api/candidates.js'
 import ActionButtons from '../components/ActionButtons.jsx'
-import ApprovalTimeline from '../components/ApprovalTimeline.jsx'
+import ApprovalTimeline, { ChangeHistory } from '../components/ApprovalTimeline.jsx'
 import CandidateSections from '../components/CandidateSections.jsx'
 import CommentBox from '../components/CommentBox.jsx'
 import NameAvatar from '../components/NameAvatar.jsx'
@@ -157,6 +157,9 @@ export default function CandidateDetail() {
           <CandidateSections candidate={candidate} />
         </Col>
         <Col xs={24} xl={9}>
+          <Card title="Change history" style={{ marginBottom: 16 }}>
+            <ChangeHistory trail={candidate.trail} />
+          </Card>
           <Card title="Approval trail">
             <ApprovalTimeline trail={candidate.trail} />
             {canComment(user) && <CommentBox candidate={candidate} onAdded={load} />}

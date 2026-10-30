@@ -213,7 +213,31 @@ public class CandidateServiceImpl implements CandidateService {
         }
         emailService.notifyStage(emailEntities(c), List.of(Role.HR, Role.CONTRACTS, Role.PAYROLL, Role.ACCOUNTS),
                 people, subject, body);
+        warnIfVendorPercentageHigh(c);
         return c;
+    }
+
+    /** Above this vendor percentage (pay rate as a share of the bill rate) everyone in the loop gets a warning. */
+    private static final java.math.BigDecimal VENDOR_PERCENTAGE_WARNING = java.math.BigDecimal.valueOf(75);
+
+    /**
+     * A small warning email to everyone in the loop (HR, Contracts, Payroll, Accounts + Super Admin, the team's
+     * Sales Lead and Sales Manager, the recruiter) when the vendor percentage is above 75%. Sent when the Sales
+     * Lead / Manager approves and when the rates change. Nothing is sent at 75% or below, or without rates.
+     */
+    private void warnIfVendorPercentageHigh(Candidate c) {
+        java.math.BigDecimal pct = c.getVendorPercentage();
+        if (pct == null || pct.compareTo(VENDOR_PERCENTAGE_WARNING) <= 0) {
+            return;
+        }
+        List<User> people = new ArrayList<>(approvers(c));
+        if (c.getSubmittedBy() != null) {
+            people.add(c.getSubmittedBy());
+        }
+        emailService.notifyStage(emailEntities(c), ALL_FOUR_ROLES, people,
+                "Warning: vendor percentage above 75% for " + c.getCandidateName(),
+                emailHtml("Warning: the vendor percentage of '" + c.getCandidateName() + "' is " + pct
+                        + "%, which is greater than 75%. Please look into it.", c));
     }
 
     /**
@@ -859,6 +883,7 @@ public class CandidateServiceImpl implements CandidateService {
                 people, "Rates changed: " + c.getCandidateName(),
                 emailHtml(actor.getFullName() + " (" + who + ") changed the rates of '" + c.getCandidateName()
                         + "': " + change + ". Reason: " + comment, c));
+        warnIfVendorPercentageHigh(c);
         return c;
     }
 
@@ -945,11 +970,12 @@ public class CandidateServiceImpl implements CandidateService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Object> search(User actor, String search, String status, boolean dojToday, int page, int size) {
+    public Map<String, Object> search(User actor, String search, String status, boolean dojToday, CandidateFilter filter, int page, int size) {
         Specification<Candidate> spec = CandidateQueries.visibleTo(actor)
                 .and(CandidateQueries.matches(search))
                 .and(CandidateQueries.hasStatusKey(status))
-                .and(CandidateQueries.dojToday(dojToday));
+                .and(CandidateQueries.dojToday(dojToday))
+                .and((filter == null ? CandidateFilter.NONE : filter).toSpec());
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
                 Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id"))); // latest activity first
         Page<Candidate> result = candidateRepository.findAll(spec, pageable);
@@ -967,7 +993,9 @@ public class CandidateServiceImpl implements CandidateService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Long> summary(User actor) {
+    public Map<String, Long> summary(User actor, CandidateFilter filter) {
+        Specification<Candidate> visible = CandidateQueries.visibleTo(actor)
+                .and((filter == null ? CandidateFilter.NONE : filter).toSpec());
         // One small GROUP BY over the visible candidates instead of downloading them all
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Tuple> q = cb.createTupleQuery();
@@ -976,7 +1004,7 @@ public class CandidateServiceImpl implements CandidateService {
         var exitedFlag = cb.<Integer>selectCase()
                 .when(cb.equal(root.get("projectEndStatus"), ProjectEndStatus.APPROVED), 1).otherwise(0);
         q.multiselect(root.get("status"), root.get("contractsDecision"), root.get("dojStatus"), exitedFlag, cb.count(root))
-                .where(CandidateQueries.visibleTo(actor).toPredicate(root, q, cb))
+                .where(visible.toPredicate(root, q, cb))
                 .groupBy(root.get("status"), root.get("contractsDecision"), root.get("dojStatus"), exitedFlag);
 
         Map<String, Long> counts = new LinkedHashMap<>();
@@ -994,7 +1022,7 @@ public class CandidateServiceImpl implements CandidateService {
         }
         // how many of the visible candidates join today (the "joining today" card for Lead / Manager / HR)
         counts.put("dojToday", candidateRepository.count(
-                CandidateQueries.visibleTo(actor).and(CandidateQueries.dojToday(true))));
+                visible.and(CandidateQueries.dojToday(true))));
         return counts;
     }
 

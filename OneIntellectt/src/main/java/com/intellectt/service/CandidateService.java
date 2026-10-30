@@ -64,10 +64,10 @@ public interface CandidateService {
      * narrowed by a search term and a display-status key (e.g. "PENDING_HR").
      * Returns {content, totalElements, totalPages, number, size}.
      */
-    Map<String, Object> search(User actor, String search, String status, boolean dojToday, int page, int size);
+    Map<String, Object> search(User actor, String search, String status, boolean dojToday, CandidateFilter filter, int page, int size);
 
     /** Dashboard counters {pending, approved, declined, joined} over the visible candidates. */
-    Map<String, Long> summary(User actor);
+    Map<String, Long> summary(User actor, CandidateFilter filter);
 
     Candidate getVisible(Long id, User actor);
 

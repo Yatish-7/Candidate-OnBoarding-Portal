@@ -87,7 +87,7 @@ once per database, in this order, BEFORE deploying the matching version: `sales-
 ## Tests
 
 ```bash
-./mvnw test        # 124 API and unit tests, about 1-2 minutes
+./mvnw test        # 127 API and unit tests, about 1-2 minutes
 ```
 
 The tests need a separate database, `CREATE DATABASE intellectt_test;`. They start the

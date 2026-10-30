@@ -65,7 +65,7 @@ const COLUMNS = [
 
 // The candidate list. "embedded" = shown inside another page (the admin dashboard),
 // so it skips the big page title.
-export default function CandidateList({ embedded = false }) {
+export default function CandidateList({ embedded = false, filters = {} }) {
   const { role } = useAuth()
   const navigate = useNavigate()
   const { message } = AntApp.useApp()
@@ -91,7 +91,7 @@ export default function CandidateList({ embedded = false }) {
     // If the query changes again before this request finishes, ignore this (now outdated) answer
     let ignore = false
 
-    getCandidates(query)
+    getCandidates({ ...query, filters })
       .then((data) => {
         if (!ignore) setResult(data)
       })
@@ -105,7 +105,7 @@ export default function CandidateList({ embedded = false }) {
     return () => {
       ignore = true
     }
-  }, [query, message])
+  }, [query, filters, message])
 
   // Change part of the query, e.g. updateQuery({ status: 'JOINED' })
   function updateQuery(changes) {

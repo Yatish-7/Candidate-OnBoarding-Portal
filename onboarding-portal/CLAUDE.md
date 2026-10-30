@@ -44,6 +44,8 @@ animations are in `src/index.css` (with a `prefers-reduced-motion` guard).
 | `context/AuthProvider.jsx` | User from `/api/auth/me`; `login`, `logout`, `refreshUser`; multi-tab sync |
 | `components/AppLayout.jsx` | Dark sidebar (menu by role), header user menu (change password, log out) |
 | `components/SessionTimeout.jsx` + `utils/session.js` | Idle warning and auto sign-out, shared across tabs |
+| `components/CandidateFilters.jsx` | Super Admin filter bar (date field + quick/custom range, recruiter, team, intake fields); `AdminDashboard` holds the filters and passes them to the counters (`getDashboardSummary`) and `CandidateList` (`filters` prop); `filterParams` in `api/candidates.js` |
+| `components/ApprovalTimeline.jsx` | The trail, and `ChangeHistory` (edits / rate changes with who, when, old → new) |
 | `components/ActionButtons.jsx` + `ActionModal.jsx` | Workflow actions (decline requires a comment) |
 | `utils/permissions.js` | Which buttons show; mirrors the backend rules (HR may revise until DOJ approved and edits details at any time; Lead/Manager decline; Payroll/Accounts approve/decline; rates; project end raise/approve/decline) |
 | `utils/status.js` | `getStatusKey` (incl. `PENDING_PAYROLL_ACCOUNTS`, `EXITED`), `STATUS_OPTIONS`, `SUMMARY_GROUPS`; **must match `CandidateQueries`** |

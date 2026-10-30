@@ -171,6 +171,8 @@ Roles: `RECRUITER`, `SALES_LEAD`, `HR`, `CONTRACTS`, `PAYROLL`, `ACCOUNTS`, `ADM
 | `GET /api/candidates/{id}` | Those who can see it | 403 otherwise |
 | `GET /api/candidates/{id}/trail` | Same | `[{ id, actor: User, actorRole, stage, actionType, comment, createdAt }]`, oldest first |
 
+Both `GET /api/candidates` and `/summary` accept the optional filters `dateField` (`submitted` default, `updated`, `doj`, `projectEnd`), `from`, `to` (`yyyy-MM-dd`, inclusive), `recruiterId`, `teamId`, `employmentType`, `internalEntity`, `clientState`, `recruiterLocation`, `payrollCompany`; the caller's visibility rules still apply. A bad `dateField` / date, or `to` before `from`, is 400.
+
 Visibility: Super Admin all · Recruiter own · Sales Lead own team · Sales Manager all teams under them · HR/Contracts past
 Sales Lead approval · Payroll and Accounts only after HR and Contracts have both approved · Admin none.
 

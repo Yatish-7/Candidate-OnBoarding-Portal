@@ -12,6 +12,7 @@ import { getDashboardSummary } from '../api/dashboard.js'
 import PageHeader from '../components/PageHeader.jsx'
 import { getErrorMessage } from '../utils/errors.js'
 import { STATUSES, SUMMARY_GROUPS } from '../utils/status.js'
+import CandidateFilters from '../components/CandidateFilters.jsx'
 import CandidateList from './CandidateList.jsx'
 
 // The counters. "key" matches a field in the /api/dashboard/summary response.
@@ -66,17 +67,21 @@ function CounterCard({ counter, value, loading }) {
 // Super Admin: counts at the top, then the full candidate table (the same one as the Candidates page)
 export default function AdminDashboard() {
   const [summary, setSummary] = useState(null)
+  // date range, recruiter, team ... the counters and the table below both follow them
+  const [filters, setFilters] = useState({})
   const { message } = AntApp.useApp()
 
   useEffect(() => {
-    getDashboardSummary()
+    getDashboardSummary(filters)
       .then(setSummary)
       .catch((error) => message.error(getErrorMessage(error, 'Could not load the summary')))
-  }, [message])
+  }, [filters, message])
 
   return (
     <>
       <PageHeader title="Dashboard" subtitle="Every candidate across all teams and stages." />
+
+      <CandidateFilters filters={filters} onChange={setFilters} />
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         {COUNTERS.map((counter) => (
@@ -87,7 +92,7 @@ export default function AdminDashboard() {
         ))}
       </Row>
 
-      <CandidateList embedded />
+      <CandidateList embedded filters={filters} />
     </>
   )
 }

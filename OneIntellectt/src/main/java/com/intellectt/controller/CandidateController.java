@@ -1,8 +1,10 @@
 package com.intellectt.controller;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.intellectt.model.ApprovalAction;
 import com.intellectt.model.Candidate;
 import com.intellectt.security.AppUserPrincipal;
+import com.intellectt.service.CandidateFilter;
 import com.intellectt.service.CandidateService;
 
 /**
@@ -44,21 +47,49 @@ public class CandidateController {
     }
 
     // ----- Reads -----
-    /** One page of candidates: ?page=0&size=20&search=&status=&dojToday= (page is 0-based, size max 100). */
+    /**
+     * One page of candidates: ?page=0&size=20&search=&status=&dojToday= (page is 0-based, size max 100), plus the
+     * optional filters of {@link CandidateFilter}: dateField, from, to (yyyy-MM-dd), recruiterId, teamId,
+     * employmentType, internalEntity, clientState, recruiterLocation, payrollCompany.
+     */
     @GetMapping
     public ResponseEntity<Map<String, Object>> list(@RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "false") boolean dojToday,
+            @RequestParam(required = false) String dateField,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long recruiterId,
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) String employmentType,
+            @RequestParam(required = false) String internalEntity,
+            @RequestParam(required = false) String clientState,
+            @RequestParam(required = false) String recruiterLocation,
+            @RequestParam(required = false) String payrollCompany,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal AppUserPrincipal principal) {
-        return ResponseEntity.ok(candidateService.search(principal.getUser(), search, status, dojToday, page, size));
+        return ResponseEntity.ok(candidateService.search(principal.getUser(), search, status, dojToday,
+                new CandidateFilter(dateField, from, to, recruiterId, teamId, employmentType, internalEntity, clientState,
+                        recruiterLocation, payrollCompany), page, size));
     }
 
     /** Dashboard counters {pending, approved, declined, joined, exited}, computed on the server. */
     @GetMapping("/summary")
-    public ResponseEntity<Map<String, Long>> summary(@AuthenticationPrincipal AppUserPrincipal principal) {
-        return ResponseEntity.ok(candidateService.summary(principal.getUser()));
+    public ResponseEntity<Map<String, Long>> summary(@RequestParam(required = false) String dateField,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long recruiterId,
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) String employmentType,
+            @RequestParam(required = false) String internalEntity,
+            @RequestParam(required = false) String clientState,
+            @RequestParam(required = false) String recruiterLocation,
+            @RequestParam(required = false) String payrollCompany,
+            @AuthenticationPrincipal AppUserPrincipal principal) {
+        return ResponseEntity.ok(candidateService.summary(principal.getUser(),
+                new CandidateFilter(dateField, from, to, recruiterId, teamId, employmentType, internalEntity, clientState,
+                        recruiterLocation, payrollCompany)));
     }
 
     @GetMapping("/{id}")

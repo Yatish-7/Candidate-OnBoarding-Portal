@@ -109,6 +109,35 @@ class WorkflowEmailApiTest extends ApiTestSupport {
     }
 
     @Test
+    @DisplayName("Vendor percentage above 75%: everyone in the loop gets a warning when the Sales Lead approves; 75% or less sends none")
+    @SuppressWarnings("unchecked")
+    void highVendorPercentageWarning() {
+        TeamSetup ts = newTeam(admin());
+        String lead = login(ts.lead());
+        String rec = login(ts.recruiter());
+        long high = submitCandidate(rec, java.util.Map.of("billRate", "100", "payRate", "80"));
+        long edge = submitCandidate(rec, java.util.Map.of("billRate", "100", "payRate", "75"));
+        clearInvocations(emailService);
+
+        assertEquals(200, act(edge, "sales-lead/approve", lead, null).status());
+        verify(emailService, org.mockito.Mockito.never()).notifyStage(ArgumentMatchers.<Collection<String>>any(),
+                ArgumentMatchers.<Collection<Role>>any(), ArgumentMatchers.<Collection<User>>any(),
+                org.mockito.ArgumentMatchers.contains("Warning: vendor percentage"), anyString());
+        clearInvocations(emailService);
+
+        assertEquals(200, act(high, "sales-lead/approve", lead, null).status());
+        ArgumentCaptor<Collection<Role>> roles = ArgumentCaptor.forClass(Collection.class);
+        ArgumentCaptor<Collection<User>> people = ArgumentCaptor.forClass(Collection.class);
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        verify(emailService).notifyStage(ArgumentMatchers.<Collection<String>>any(), roles.capture(), people.capture(),
+                org.mockito.ArgumentMatchers.contains("Warning: vendor percentage"), body.capture());
+        assertEquals(ALL_FOUR, Set.copyOf(roles.getValue()));
+        Set<String> to = people.getValue().stream().map(User::getEmail).collect(java.util.stream.Collectors.toSet());
+        assertEquals(Set.of(ts.lead().email(), ts.recruiter().email()), to);
+        assertTrue(body.getValue().contains("80.00%") && body.getValue().contains("greater than 75%"));
+    }
+
+    @Test
     @DisplayName("Project end date: raising it emails Lead, Manager and HR; each approval and the final approval email everyone")
     @SuppressWarnings("unchecked")
     void projectEndEmails() {

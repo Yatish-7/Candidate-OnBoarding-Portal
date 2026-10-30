@@ -66,9 +66,9 @@ when the user signs in somewhere else, or when they're deactivated. The login pa
 | `/change-password` | Signed in | Change password (forced at first sign-in) |
 | `/candidates` | All workflow roles | Paged, searchable list with a status filter |
 | `/candidates/new` | Recruiter | Intake form |
-| `/candidates/:id` | Those who can see it | Details, stage progress, approval trail, action buttons (approve / decline, rates, project end date, HR's Edit details) |
+| `/candidates/:id` | Those who can see it | Details, stage progress, change history (old → new, by whom), approval trail, action buttons (approve / decline, rates, project end date, HR's Edit details) |
 | `/candidates/:id/edit` | HR | Edit a candidate's details (everyone in the loop is emailed) |
-| `/admin` | Super Admin | Dashboard counters (Pending, Approved, Declined, Joined, Exited) + all candidates |
+| `/admin` | Super Admin | Dashboard counters (Pending, Approved, Declined, Joined, Drop outs, Exited) + a filter bar (date or week, recruiter, team, employment type, entity, state, location) + all candidates |
 | `/admin/users` | Super Admin, Admin | Create, edit, deactivate and delete users; shows last sign-in |
 | `/admin/teams` | Super Admin, Admin, Sales Lead, Sales Manager | Teams, their Sales Lead and Sales Manager, and members (a Lead sees own team only; a Manager the teams under them) |
 | `/admin/audit` | Super Admin | History of every change, with before/after |

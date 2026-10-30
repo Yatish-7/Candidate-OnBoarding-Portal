@@ -179,6 +179,12 @@ npm run dev    # :5173      npm run build · npm run lint
 
 ---
 
+## 6g. Dashboard filters (30 Oct 2026)
+`GET /api/candidates` and `/summary` take optional filters (`service/CandidateFilter`): `dateField` (submitted | updated | doj | projectEnd), `from`, `to`
+(yyyy-MM-dd, inclusive), `recruiterId`, `teamId`, `employmentType`, `internalEntity`, `clientState`, `recruiterLocation`, `payrollCompany`.
+Visibility rules still apply on top. The Super Admin dashboard shows them via `components/CandidateFilters.jsx` (quick ranges incl. this/last week,
+Monday to Sunday); the counters and the table follow the same filters. No schema change. Test: `CandidateFilterApiTest`.
+
 ## 6f. Attack detection (29 Oct 2026)
 `security/SuspiciousInputFilter` (created in `SecurityConfig`, after `JwtAuthFilter`) logs `SUSPICIOUS_INPUT` / `SUSPICIOUS_REPEAT` to security.log for
 attack-shaped query strings and JSON bodies. Detection only (never blocks), never logs the payload or an IP. Incident steps: SECURITY.md "If an attack happens".
@@ -218,6 +224,7 @@ each HR approval and each Contracts approval → all four mailboxes (+ Super Adm
 Manager and recruiter ("DOJ can be approved") · any decline → Sales Lead + Manager (+ Super Admin) · DOJ approved →
 Payroll + Accounts + recruiter · override → HR/Contracts/Accounts/Payroll + Lead/Manager · reset → the user only.
 Migration for this flow: `docs/payroll-accounts-migration.sql`.
+Vendor percentage above 75% (pay rate ÷ discounted bill rate): a separate "Warning: vendor percentage above 75%" email goes to HR, Contracts, Payroll, Accounts (+ Super Admin), the Lead, Manager and recruiter when the Lead/Manager approves and when the rates change (`warnIfVendorPercentageHigh`; 75% or less sends nothing).
 Rate change (`POST /{id}/rates`): only the team's Lead/Manager and the Super Admin, comment required, emails everyone in the loop;
 after submit only **HR** can edit the other details (`PUT /api/candidates/{id}`, full replace, trail `EDIT`, emails everyone in the loop;
 migration `docs/candidate-edit-migration.sql`). Migration for rates: `docs/rate-change-migration.sql`.

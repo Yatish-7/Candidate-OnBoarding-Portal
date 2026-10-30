@@ -93,7 +93,7 @@ flowchart TB
         SS[SessionService]
         ES["EmailService<br/>entity routing, async"]
         AUS["AuditService<br/>reads *_aud tables"]
-        CQ["CandidateQueries<br/>visibility, search, status keys"]
+        CQ["CandidateQueries + CandidateFilter<br/>visibility, search, status keys, dashboard filters"]
     end
     subgraph Sec["security"]
         JWT[JwtService]
@@ -125,7 +125,7 @@ flowchart TB
 | Package | Contents |
 |---|---|
 | `controller` | `AuthController`, `UserController`, `TeamController`, `CandidateController`, `AuditController` — thin; pass the signed-in user to services |
-| `service` | Interfaces + `*Impl`: auth, users, teams, candidates (workflow, HR edit, rates, project end date, email HTML), sessions, email, audit; `CandidateQueries` (Specifications), `CredentialRules` (password/email rules), `AllowedEmailDomains` (company email ids only) |
+| `service` | Interfaces + `*Impl`: auth, users, teams, candidates (workflow, HR edit, rates, project end date, email HTML), sessions, email, audit; `CandidateQueries` and `CandidateFilter` (Specifications: visibility, search, status, date / recruiter / team filters), `CredentialRules` (password/email rules), `AllowedEmailDomains` (company email ids only) |
 | `repository` | Spring Data JPA repositories; `@EntityGraph` on list/detail queries to avoid N+1 |
 | `model`, `model.enums` | JPA entities used directly as JSON bodies; `SsnConverter` |
 | `security` | `JwtService`, `JwtAuthFilter`, `SuspiciousInputFilter` (logs attack-shaped input, runs after the JWT filter), `RestAuthenticationEntryPoint`, `AppUserPrincipal`, `CustomUserDetailsService`, `AttemptLimiter`, `FieldCipher`, `SecurityEvents` |

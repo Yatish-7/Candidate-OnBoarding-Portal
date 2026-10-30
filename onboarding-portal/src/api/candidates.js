@@ -145,8 +145,17 @@ function mapTrail(actions) {
 // GET /api/candidates?search=&status=&page=&size= → one page, already searched,
 // filtered and paged by the server: { content, totalElements, totalPages, number, size }.
 // (status is a display-status key such as "PENDING_HR"; see utils/status.js)
-export async function getCandidates({ search = '', status = '', dojToday = false, page = 0, size = 10 }) {
-  const params = { page, size }
+// The Super Admin's extra filters (date range, recruiter, team, ...) as query params; blank ones are left out
+export function filterParams(filters = {}) {
+  const params = {}
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== null && value !== '') params[key] = value
+  }
+  return params
+}
+
+export async function getCandidates({ search = '', status = '', dojToday = false, page = 0, size = 10, filters = {} }) {
+  const params = { ...filterParams(filters), page, size }
   if (dojToday) params.dojToday = true // only candidates whose Date of Joining is today
   if (search) params.search = search
   if (status) params.status = status

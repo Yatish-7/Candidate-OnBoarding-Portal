@@ -224,6 +224,7 @@ and as `canView` to single reads:
 | Project end date approved by both (candidate exits) | `hr@`, `contracts@`, `payroll@`, `accounts@`, the recruiter, the other approver + `superadmin@` |
 | Details edited by HR | `hr@`, `contracts@`, `payroll@`, `accounts@`, the Lead, the Manager, the recruiter + `superadmin@`; the email lists the changes (old → new) |
 | Rates changed | `hr@`, `contracts@`, `payroll@`, `accounts@`, the Lead, the Manager, the recruiter + `superadmin@` (not the person who changed them) |
+| **Vendor percentage above 75%** (a separate "Warning" email, sent when the Sales Lead / Manager approves and when the rates change; nothing at 75% or less) | `hr@`, `contracts@`, `payroll@`, `accounts@`, the Lead, the Manager, the recruiter + `superadmin@`; says the vendor percentage is greater than 75% and to look into it |
 | Super Admin override | `hr@`, `contracts@`, `accounts@`, `payroll@`, the Sales Lead and Manager + `superadmin@` |
 | Password reset | The user only |
 
@@ -266,6 +267,22 @@ The "which company / which team" answers are cleared when the Yes/No is No. Shar
 When a candidate's Date of Joining is **today** (server date), the Sales Lead, Sales Manager and HR see a card at the top of their Candidates page
 ("N candidates join today") with a button that lists only those candidates (`GET /api/candidates?dojToday=true`; the count is `dojToday` in
 `/api/candidates/summary`). Candidates that were declined, rejected or dropped out are not counted.
+
+### 4.6a Change history
+
+Every HR edit and every rate change is saved on the candidate's approval trail with **who** made it (name and role), **when**, and each changed field as
+*old → new* (e.g. Pay rate 80 → 90; for a rate change also the reason). The candidate page shows them in a **Change history** card (newest first, the old
+value struck through) next to the full trail, to everyone who can open the candidate (recruiter, Lead, Manager, HR, Contracts, Payroll, Accounts, Super Admin).
+A Job Description edit only says "changed" (the text is long) and an SSN change only says "SSN changed" (never shown). No schema change.
+
+### 4.6b Super Admin dashboard filters
+
+The Super Admin dashboard has a **Filters** card: which date to use (submitted, last updated, date of joining, project end date), a quick range (today,
+this/last week, this/last month, last 30 days; weeks run Monday to Sunday) or custom dates, recruiter, team, employment type, placement entity, payroll
+company, client state and recruiter location. The six counters and the candidate table follow the same filters. They are optional query parameters of
+`GET /api/candidates` and `/summary` (`dateField`, `from`, `to`, `recruiterId`, `teamId`, `employmentType`, `internalEntity`, `clientState`,
+`recruiterLocation`, `payrollCompany`; `service/CandidateFilter`). They are bound as query parameters, a bad date type or range is a 400, and the caller's
+visibility rules always apply on top, so a filter can't show anything the person may not see. No schema change.
 
 ### 4.7 User, team and account lifecycle
 - Only company email ids are accepted (create, edit, sign-in): the domains in `app.allowed-email-domains`; anything else gets "use your correct company email id" (`AllowedEmailDomains`).
@@ -360,7 +377,7 @@ Summary only; detail and test evidence in [SECURITY.md](../SECURITY.md) and [COM
 
 | Level | What | Where |
 |---|---|---|
-| API tests (JUnit 5, real HTTP, real PostgreSQL `intellectt_test`) | Auth & sessions, users & teams, full workflow incl. Sales Manager / Payroll / Accounts, paging/filters, audit, attacks, role matrix, compliance controls, rate change, project end date | `src/test/java/com/intellectt/api/*` — 124 tests in total |
+| API tests (JUnit 5, real HTTP, real PostgreSQL `intellectt_test`) | Auth & sessions, users & teams, full workflow incl. Sales Manager / Payroll / Accounts, paging/filters, audit, attacks, role matrix, compliance controls, rate change, project end date, vendor-percentage warning, dashboard filters | `src/test/java/com/intellectt/api/*` — 124 tests in total |
 | Unit tests | Email routing (incl. several entities in one email), JWT filter behaviour under DB failure | `service/`, `security/` |
 | Load test | 1000 concurrent users, role-appropriate actions | `load-test/load_test.py`, results in `RESULTS.md` |
 | Frontend | Lint (`oxlint`), production build, `npm audit` | `npm run lint`, `npm run build` |
