@@ -75,7 +75,7 @@ be done when it goes live. Every protection below is checked by the tests in
 8. **Backups** of the database, including the `*_aud` audit tables.
 9. Re-run `npm audit` and keep Spring Boot up to date (patch releases fix security issues).
    Use a database user that can read and write data but has no rights to create, alter or drop tables (the app only validates the schema); run the migration scripts with a separate admin account.
-   Last checks (29 Oct 2026): `npm audit` 0 vulnerabilities; all 127 backend tests pass (SQL injection, XSS, access control, privilege escalation, brute force, forged tokens, mass assignment, email-domain rule).
+   Last checks (29 Oct 2026): `npm audit` 0 vulnerabilities; all 128 backend tests pass (SQL injection, XSS, access control, privilege escalation, brute force, forged tokens, mass assignment, email-domain rule).
 10. **Run the SQL migrations** in `docs/` (`sales-manager-`, `payroll-accounts-`, `project-end-`, `rate-change-migration.sql`)
     on the production database, after a backup. Rows inserted by hand (e.g. `docs/sample-candidates.sql`) bypass the
     application, so they are not in the audit log and send no email; don't use that for real data.

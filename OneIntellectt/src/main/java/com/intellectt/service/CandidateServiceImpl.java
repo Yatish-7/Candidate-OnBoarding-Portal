@@ -72,7 +72,7 @@ public class CandidateServiceImpl implements CandidateService {
     static final List<String> TEAM_TYPES = List.of("SALES", "REQ", "BOTH");
 
     /** The employment types in the form's dropdown (keep in step with options.js). */
-    static final List<String> EMPLOYMENT_TYPES = List.of("W2", "C2C", "Full-time", "Self");
+    static final List<String> EMPLOYMENT_TYPES = List.of("W2", "C2C", "Full-time", "Self", "1099 Individual", "Other");
 
     /** Our own companies a candidate can be placed with (keep in step with options.js). */
     static final List<String> PLACEMENT_COMPANIES = List.of("novozen", "revereit", "premierlifesciences",

@@ -123,7 +123,7 @@ def candidate_body(i):
         "location": "Austin, TX",
         "billRate": "85", "payRate": "60",
         "internalEntity": random.choice(ENTITIES),
-        "visaStatus": "H1B",
+        "visaStatus": "H1 Ext",
         "dojDate": "2026-12-01",
         "jobDescription": "Load-test candidate. " * 10,
     }

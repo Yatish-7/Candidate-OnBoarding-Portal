@@ -97,7 +97,7 @@ public class Candidate {
     private String clientLocation;
 
     // ----- Engagement & Compliance -----
-    /** W2, C2C, Full-time or Self (checked in CandidateServiceImpl). */
+    /** W2, C2C, Full-time, Self, 1099 Individual or Other (checked in CandidateServiceImpl). */
     private String employmentType;
 
     /** Optional: which company runs the candidate's payroll (one of ours, or "Other" + the name below). */

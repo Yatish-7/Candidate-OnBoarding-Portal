@@ -21,7 +21,7 @@ WITH c AS (
     'Meenakshi', 'Hyderabad', 'Meenakshi', 'Yatish''s Team', 'novozen',
     'Acme Corp', 'Dana Miller', 'dana.miller@acme.example.com', '(555) 010-2001', 'Dallas, TX',
     'Acme Staffing', 'Java Developer', 'Dallas, TX', 'W2', '85', '65', DATE '2026-11-15', DATE '2026-11-16',
-    'No', 'H1B', DATE '2028-06-30', 'None', 'BI_WEEKLY', false,
+    'No', 'H1 Ext', DATE '2028-06-30', 'None', 'BI_WEEKLY', false,
     'Backend Java developer for a 12-month engagement.', false, false, 'novozen',
     'PENDING_SALES_LEAD_APPROVAL', 'PENDING', 'PENDING', 'PENDING', 'PENDING', 'RAISED',
     81, 24, now(), now())

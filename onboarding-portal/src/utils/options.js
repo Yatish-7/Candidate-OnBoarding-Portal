@@ -47,7 +47,7 @@ export const US_STATE_OPTIONS = [
   'Wyoming',
 ].map((state) => ({ value: state, label: state }))
 
-export const EMPLOYMENT_TYPE_OPTIONS = ['W2', 'C2C', 'Full-time', 'Self'].map((type) => ({ value: type, label: type }))
+export const EMPLOYMENT_TYPE_OPTIONS = ['W2', 'C2C', 'Full-time', 'Self', '1099 Individual','Other'].map((type) => ({ value: type, label: type }))
 
 // Our own companies a candidate can be placed with: the internal entities plus Intellectt and
 // NewMEK. Must match PLACEMENT_COMPANIES in the backend (CandidateServiceImpl).
@@ -60,15 +60,18 @@ export const PLACEMENT_COMPANY_OPTIONS = [
 export const VISA_STATUS_OPTIONS = [
   'US Citizen',
   'Green Card',
-  'GC EAD',
-  'H1B',
   'H1 Transfer',
+  'H1 Ext',
+  'H1 Amd',
+  'H1 Amd+Ext',
+  'H1 No Change',
   'H4 EAD',
   'L2 EAD',
   'OPT',
   'STEM OPT',
   'CPT',
   'TN',
+  'Other',
 ].map((visa) => ({ value: visa, label: visa }))
 
 // These never expire, so the work authorization expiry date isn't required for them

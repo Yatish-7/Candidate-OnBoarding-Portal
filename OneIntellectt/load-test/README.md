@@ -4,7 +4,7 @@ Two kinds of tests live in this project:
 
 | | What | Where | How long |
 |---|---|---|---|
-| **Automated tests** | 127 checks of the API: login & sessions, roles & permissions, users & teams, the full candidate workflow, paging/search/filter, the audit log, email routing, attack checks | `src/test/java` | ~1 minute |
+| **Automated tests** | 128 checks of the API: login & sessions, roles & permissions, users & teams, the full candidate workflow, paging/search/filter, the audit log, email routing, attack checks | `src/test/java` | ~1 minute |
 | **Load test** | 1000 people using the portal at the same time | `load-test/load_test.py` | ~5 minutes |
 
 Results of the load test: see [RESULTS.md](RESULTS.md).
@@ -30,7 +30,7 @@ cd D:\Intellectt\OneIntellectt
 JAVA_HOME="C:\Program Files\Java\jdk-17" ./mvnw test
 ```
 
-Expected: `Tests run: 127, Failures: 0, Errors: 0`.
+Expected: `Tests run: 128, Failures: 0, Errors: 0`.
 
 The tests start the real backend on a random port with the `test` profile
 (`src/test/resources/application-test.properties`), which points at `intellectt_test`

@@ -8,7 +8,7 @@ produce the **evidence** an auditor will ask for. This document maps the portal 
 controls and lists what the company still has to provide.
 
 Status as of 29 Oct 2026 (re-checked end to end, including the later changes: HR's DOJ and project end date approval, drop out /
-back out, joining-today cards, US-state dropdown, `ddl-auto=validate`). Evidence = code plus automated tests (`./mvnw test`, 127 tests,
+back out, joining-today cards, US-state dropdown, `ddl-auto=validate`). Evidence = code plus automated tests (`./mvnw test`, 128 tests,
 all passing). Technical details: [SECURITY.md](SECURITY.md).
 
 ## 1. Controls the portal implements

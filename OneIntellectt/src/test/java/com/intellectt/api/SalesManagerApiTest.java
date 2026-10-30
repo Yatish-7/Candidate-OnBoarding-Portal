@@ -555,12 +555,12 @@ class SalesManagerApiTest extends ApiTestSupport {
         }
 
         // submitted without a work authorization expiry...
-        long id = submitCandidate(rec, Map.of("visaStatus", "H1B"));
+        long id = submitCandidate(rec, Map.of("visaStatus", "H1 Ext"));
         assertTrue(candidate(id, rec).path("workAuthorizationExpDate").isNull());
         // ...HR fills it in later
         act(id, "sales-lead/approve", lead, null);
         Res edited = put("/api/candidates/" + id, hr, Map.of("candidateName", candidate(id, rec).path("candidateName").asText(),
-                "visaStatus", "H1B", "workAuthorizationExpDate", "2028-03-31"));
+                "visaStatus", "H1 Ext", "workAuthorizationExpDate", "2028-03-31"));
         assertEquals(200, edited.status());
         assertEquals("2028-03-31", edited.text("workAuthorizationExpDate"));
     }

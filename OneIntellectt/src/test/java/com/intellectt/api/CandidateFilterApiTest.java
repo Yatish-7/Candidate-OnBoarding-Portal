@@ -70,4 +70,15 @@ class CandidateFilterApiTest extends ApiTestSupport {
         assertEquals(0, total("&teamId=" + b.teamId(), leadA));
         assertTrue(total("&teamId=" + a.teamId(), leadA) >= 1);
     }
+
+    @Test
+    @DisplayName("Employment types: the six allowed values are accepted, anything else is refused")
+    void employmentTypes() {
+        String rec = login(newTeam(admin()).recruiter());
+        for (String type : new String[] { "W2", "C2C", "Full-time", "Self", "1099 Individual", "Other" }) {
+            submitCandidate(rec, Map.of("employmentType", type));
+        }
+        Res bad = post("/api/candidates", rec, Map.of("candidateName", "x", "employmentType", "Contractor"));
+        assertEquals(400, bad.status());
+    }
 }

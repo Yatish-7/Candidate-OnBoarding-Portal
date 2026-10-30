@@ -132,7 +132,7 @@ erDiagram
 | Candidate & recruiter | `candidate_name` (not null), `candidate_personal_email`, `candidate_direct_number`, `recruiter_name`, `lead_or_team_name`, `internal_entity` |
 | Client | `client_name`, `client_reporting_manager`, `reporting_manager_email`, `reporting_manager_contact` |
 | Payroll company | `payroll_company` (optional: one of the ten entities, or `Other`), `payroll_company_other` (the typed name, only for `Other`, max 100) |
-| Placement | `sourcing_recruiter` and `sourcing_recruiter_lead` (both optional), `client_state`, `client_location` (two separate fields), `employment_type` (W2, C2C, Full-time, Self), `internal_company_placement` + `placement_company` (set only when Yes), `shared_placement` + `shared_with_team_id` FK → `teams` (set only when Yes) |
+| Placement | `sourcing_recruiter` and `sourcing_recruiter_lead` (both optional), `client_state`, `client_location` (two separate fields), `employment_type` (W2, C2C, Full-time, Self, 1099 Individual, Other), `internal_company_placement` + `placement_company` (set only when Yes), `shared_placement` + `shared_with_team_id` FK → `teams` (set only when Yes) |
 | Team type, referral | `team_type` (`SALES`, `REQ`, `BOTH` = Sales & Req), `referral_amount` (optional number kept as typed) |
 | Recruiter | `recruiter_location` (Hyderabad, Vijayawada, Banglore, Indore, Noida, USA; checked on submit). The Sales Lead / Manager names in responses are computed from the team, not stored |
 | Engagement & compliance | `vendor`, `job_role`, `location`, `bill_rate`, `pay_rate`, `start_date`, `cc_company`, `referral`, **`ssn_no`** (encrypted), `visa_status`, `work_authorization_exp_date`, `relocation_expenses`, `pay_cycle`, `existing_employee`, `job_description` (≤ 4000) |
