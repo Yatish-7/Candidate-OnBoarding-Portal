@@ -228,6 +228,10 @@ and as `canView` to single reads:
 | Super Admin override | `hr@`, `contracts@`, `accounts@`, `payroll@`, the Sales Lead and Manager + `superadmin@` |
 | Password reset | The user only |
 
+**Super Admins.** "`superadmin@`" in the table means the Placement Entity's `superadmin@<domain>` mailbox **plus every active Super Admin account's own
+email** (a Super Admin can create more Super Admins in Users; the first is the seeded `admin@intellectt.com`), so all of them get these emails, once each.
+The `super-admin-address` testing switch, when set, replaces all of these with that one address.
+
 **Payroll company.** If the candidate's payroll company is a different one of the ten entities than
 the Placement Entity, the same email also goes to that entity's mailboxes (e.g. `hr@novozen.com`
 **and** `hr@kennedysoft.com`, with `superadmin@` of both) in **one** message; a recipient is never

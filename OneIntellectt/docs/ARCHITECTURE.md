@@ -266,7 +266,7 @@ flowchart LR
     EV["Workflow event<br/>(approve, decline, rates, project end …)"] --> CS["CandidateServiceImpl.emailEntities"]
     CS --> E1["Placement Entity<br/>e.g. novozen"]
     CS -- "payroll company is another<br/>of the ten entities" --> E2["Payroll company<br/>e.g. kennedysoft"]
-    E1 --> R["EmailService.stageRecipients<br/>role → mailbox @ entity domain<br/>+ superadmin@"]
+    E1 --> R["EmailService.stageRecipients<br/>role → mailbox @ entity domain<br/>+ superadmin@ + every Super Admin account"]
     E2 --> R
     PEOPLE["Individual people<br/>Lead · Manager · recruiter"] --> R
     R --> U["one de-duplicated list<br/>→ ONE email"]

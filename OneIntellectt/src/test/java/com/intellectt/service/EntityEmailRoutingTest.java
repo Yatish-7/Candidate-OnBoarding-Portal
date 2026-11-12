@@ -76,7 +76,7 @@ class EntityEmailRoutingTest {
             String d = e.getValue();
             List<String> to = service.stageRecipients(e.getKey(),
                     List.of(Role.HR, Role.CONTRACTS, Role.ACCOUNTS, Role.PAYROLL), List.of());
-            assertEquals(List.of("hr@" + d, "contracts@" + d, "accounts@" + d, "payroll@" + d, "superadmin@" + d), to,
+            assertEquals(List.of("hr@" + d, "contracts@" + d, "accounts@" + d, "payroll@" + d, "superadmin@" + d, "admin@intellectt.com"), to,
                     "wrong recipients for entity " + e.getKey());
         }
         verifyNoInteractions(self); // routing only — nothing was sent
@@ -87,20 +87,20 @@ class EntityEmailRoutingTest {
         List<String> to = service.stageRecipients("novozen",
                 List.of(Role.HR, Role.CONTRACTS, Role.ACCOUNTS, Role.PAYROLL), List.of());
         assertTrue(to.containsAll(List.of("hr@novozen.com", "payroll@novozen.com", "accounts@novozen.com",
-                "contracts@novozen.com", "superadmin@novozen.com")));
-        assertEquals(5, to.size());
+                "contracts@novozen.com", "superadmin@novozen.com", "admin@intellectt.com")));
+        assertEquals(6, to.size());
     }
 
     @Test
     void individualPeopleAreStillEmailedDirectly() {
         // e.g. a decline goes to the Sales Lead, copying the entity's Super Admin
         List<String> to = service.stageRecipients("ubitz", List.of(), List.of(user("lead@intellectt.com")));
-        assertEquals(List.of("lead@intellectt.com", "superadmin@ubitz.ai"), to);
+        assertEquals(List.of("lead@intellectt.com", "superadmin@ubitz.ai", "admin@intellectt.com"), to);
     }
 
     @Test
     void entityValueIsMatchedCaseInsensitively() {
-        assertEquals(List.of("payroll@kennedysoft.com", "superadmin@kennedysoft.com"),
+        assertEquals(List.of("payroll@kennedysoft.com", "superadmin@kennedysoft.com", "admin@intellectt.com"),
                 service.stageRecipients("  KennedySoft ", List.of(Role.PAYROLL), List.of()));
     }
 
@@ -121,14 +121,14 @@ class EntityEmailRoutingTest {
         // internal entity novozen + payroll company kennedysoft: hr@ at both, people once
         service.notifyStage(List.of("novozen", "kennedysoft"), List.of(Role.HR), List.of(user("lead@intellectt.com")),
                 "subject", "body");
-        verify(self).send(List.of("lead@intellectt.com", "hr@novozen.com", "superadmin@novozen.com",
+        verify(self).send(List.of("lead@intellectt.com", "hr@novozen.com", "superadmin@novozen.com", "admin@intellectt.com",
                 "hr@kennedysoft.com", "superadmin@kennedysoft.com"), "subject", "body");
     }
 
     @Test
     void sameEntityTwiceDoesNotDuplicateAddresses() {
         service.notifyStage(List.of("novozen", "novozen"), List.of(Role.HR), List.of(), "s", "b");
-        verify(self).send(List.of("hr@novozen.com", "superadmin@novozen.com"), "s", "b");
+        verify(self).send(List.of("hr@novozen.com", "superadmin@novozen.com", "admin@intellectt.com"), "s", "b");
     }
 
     @Test
@@ -146,6 +146,24 @@ class EntityEmailRoutingTest {
         // a different entity makes no difference
         assertEquals(List.of("hr.person@portal.test", "payroll.person@portal.test", "yatish@emscale.com"),
                 svc.stageRecipients("kennedysoft", List.of(Role.HR, Role.PAYROLL), List.of()));
+    }
+
+    @Test
+    void everySuperAdminIsCopiedNotJustOne() {
+        when(users.findByRole(Role.SUPER_ADMIN)).thenReturn(List.of(user("admin@intellectt.com"), user("second@intellectt.com"),
+                inactive("gone@intellectt.com")));
+        // the entity mailbox plus each ACTIVE Super Admin account, once each
+        assertEquals(List.of("hr@novozen.com", "superadmin@novozen.com", "admin@intellectt.com", "second@intellectt.com"),
+                service.stageRecipients("novozen", List.of(Role.HR), List.of()));
+        // an entity with no mailboxes: the Super Admin accounts are still all there, without duplicates
+        assertEquals(List.of("hr.person@portal.test", "admin@intellectt.com", "second@intellectt.com"),
+                service.stageRecipients(null, List.of(Role.HR), List.of()));
+    }
+
+    private static User inactive(String email) {
+        User u = user(email);
+        u.setActive(false);
+        return u;
     }
 
     private static User user(String email) {

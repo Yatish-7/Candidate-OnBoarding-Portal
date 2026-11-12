@@ -43,7 +43,7 @@ Recruiter enters the DOJ at intake; the Sales Lead approves it after approving t
 Recruiter → own submissions · Sales Lead → own team · **Sales Manager → every team under them** · HR/Contracts → past Sales Lead
 approval · Payroll and Accounts → only after HR **and** Contracts both approved · **Admin → no
 candidates** (users & teams only, can't touch a Super Admin) · Super Admin → everything.
-**Only Super Admin and Admin manage users and teams**; a Sales Lead only adds/removes
+**Only Super Admin and Admin manage users and teams** (a Super Admin can create more Super Admins; an Admin can't); a Sales Lead only adds/removes
 recruiters in their own team.
 
 ---
@@ -157,7 +157,8 @@ npm run dev    # :5173      npm run build · npm run lint
 **Email**
 - Recruiter submit → Sales Lead only. Later stages → one email to
   `<mailbox>@<entity domain>` for the relevant roles, **always copying `superadmin@<domain>`**
-  (the user chose `superadmin@`, not `admin@`). Reset emails → the user only.
+  (the user chose `superadmin@`) **and every active Super Admin account's own email** (there can be several; the seeded one is
+  `admin@intellectt.com`; `EmailServiceImpl.stageRecipients`). Reset emails → the user only.
 - Unknown entity → fall back to the portal users holding those roles.
 
 **Schema**
@@ -238,7 +239,7 @@ entity's mailboxes (hr@novozen.com **and** hr@kennedysoft.com, Super Admin copie
 
 **Email testing switches** (`application.properties`): `app.entity-mail.mailbox-routing=true` (normal: entity mailboxes, and the payroll
 company's too when different) / `false` (testing: portal users who hold the roles) and `app.entity-mail.super-admin-address` (blank = normal
-superadmin@<domain>). Both are in the normal position now.
+superadmin@<domain> plus every Super Admin account; a non-blank address replaces all of them, for testing). Both are in the normal position now.
 
 ## 6b. Candidate intake form rules (26 Oct 2026)
 - Mandatory in the **form** (not the API): everything except CC company, Date of joining, SSN,

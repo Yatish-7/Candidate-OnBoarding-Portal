@@ -161,6 +161,12 @@ public class EmailServiceImpl implements EmailService {
             } else {
                 activeEmails(role).forEach(recipients::add);
             }
+
+            // Every active Super Admin account is copied too (there can be several), not just the
+            // entity's superadmin@ mailbox.
+            if (role == Role.SUPER_ADMIN) {
+                activeEmails(role).forEach(recipients::add);
+            }
         }
 
         return new ArrayList<>(recipients);
