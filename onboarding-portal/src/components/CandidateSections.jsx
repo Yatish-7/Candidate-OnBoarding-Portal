@@ -1,18 +1,16 @@
-import { Card, Descriptions, Space } from 'antd'
 import { AuditOutlined, ShopOutlined, UserOutlined } from '@ant-design/icons'
+import Card from '../ui/Card.jsx'
+import DescriptionList from '../ui/DescriptionList.jsx'
 import { discountedBillRate, formatDate, formatRate, formatVendorPercentage, maskSsn } from '../utils/format.js'
 import { labelFor, PAY_CYCLE_OPTIONS, TEAM_TYPE_OPTIONS, YES_NO_OPTIONS } from '../utils/options.js'
-
-// Descriptions shows label/value pairs in a grid: 2 columns on wide screens, 1 on phones
-const COLUMNS = { xs: 1, sm: 1, md: 2 }
 
 // Card title with an icon in front, e.g. 👤 Candidate & Recruiter
 function SectionTitle({ icon, children }) {
   return (
-    <Space>
-      <span style={{ color: '#4f46e5' }}>{icon}</span>
+    <h2 className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+      <span className="text-brand">{icon}</span>
       {children}
-    </Space>
+    </h2>
   )
 }
 
@@ -33,8 +31,7 @@ export default function CandidateSections({ candidate: c }) {
     { label: 'Placement entity', children: c.internalEntity || '—' },
     {
       label: 'Payroll company',
-      children:
-        c.payrollCompany === 'Other' ? `Other: ${c.payrollCompanyOther ?? '—'}` : c.payrollCompany || '—',
+      children: c.payrollCompany === 'Other' ? `Other: ${c.payrollCompanyOther ?? '—'}` : c.payrollCompany || '—',
     },
   ]
 
@@ -55,16 +52,11 @@ export default function CandidateSections({ candidate: c }) {
     {
       label: 'Placed with our company',
       children:
-        c.internalCompanyPlacement == null
-          ? '—'
-          : c.internalCompanyPlacement
-            ? `Yes: ${c.placementCompany ?? '—'}`
-            : 'No',
+        c.internalCompanyPlacement == null ? '—' : c.internalCompanyPlacement ? `Yes: ${c.placementCompany ?? '—'}` : 'No',
     },
     {
       label: 'Shared placement',
-      children:
-        c.sharedPlacement == null ? '—' : c.sharedPlacement ? `Yes: ${c.sharedTeamName ?? '—'}` : 'No',
+      children: c.sharedPlacement == null ? '—' : c.sharedPlacement ? `Yes: ${c.sharedTeamName ?? '—'}` : 'No',
     },
     { label: 'CC company', children: c.ccCompany },
     { label: 'Bill rate', children: formatRate(c.billRate) },
@@ -96,10 +88,8 @@ export default function CandidateSections({ candidate: c }) {
     },
     { label: 'Start date', children: formatDate(c.startDate) },
     { label: 'Pay cycle', children: labelFor(PAY_CYCLE_OPTIONS, c.payCycle) },
-    // Only the last 4 digits of the SSN are ever shown
     { label: 'SSN', children: maskSsn(c.ssn) },
     { label: 'Visa status', children: c.visaStatus },
-    // Only shown for H1 transfers
     ...(c.visaStatus === 'H1 Transfer'
       ? [{ label: 'H1 transfer details', children: c.h1TransferDetails || '—', span: 'filled' }]
       : []),
@@ -115,16 +105,16 @@ export default function CandidateSections({ candidate: c }) {
   ]
 
   return (
-    <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-      <Card title={<SectionTitle icon={<UserOutlined />}>Candidate & Recruiter</SectionTitle>} size="small">
-        <Descriptions items={candidateItems} column={COLUMNS} size="small" />
+    <div className="space-y-4">
+      <Card title={<SectionTitle icon={<UserOutlined />}>Candidate &amp; Recruiter</SectionTitle>}>
+        <DescriptionList items={candidateItems} />
       </Card>
-      <Card title={<SectionTitle icon={<ShopOutlined />}>Client</SectionTitle>} size="small">
-        <Descriptions items={clientItems} column={COLUMNS} size="small" />
+      <Card title={<SectionTitle icon={<ShopOutlined />}>Client</SectionTitle>}>
+        <DescriptionList items={clientItems} />
       </Card>
-      <Card title={<SectionTitle icon={<AuditOutlined />}>Engagement & Compliance</SectionTitle>} size="small">
-        <Descriptions items={engagementItems} column={COLUMNS} size="small" />
+      <Card title={<SectionTitle icon={<AuditOutlined />}>Engagement &amp; Compliance</SectionTitle>}>
+        <DescriptionList items={engagementItems} />
       </Card>
-    </Space>
+    </div>
   )
 }

@@ -1,7 +1,7 @@
-import dayjs from 'dayjs'
-
-// antd's DatePicker works with dayjs objects, but the backend sends and expects "2026-10-23".
-// These two helpers convert between the two whenever data goes into or out of the form.
+// The backend sends and expects dates like "2026-10-23". Our form uses native
+// <input type="date">, whose value is already a "YYYY-MM-DD" string, so there is
+// no dayjs conversion any more — these helpers just normalise empty values and the
+// conditional fields.
 const DATE_FIELDS = ['startDate', 'workAuthorizationExpDate', 'dojDate']
 
 // Starting values for a brand-new candidate.
@@ -10,11 +10,11 @@ export const NEW_CANDIDATE_VALUES = {
   existingEmployee: false,
 }
 
-// Backend candidate → form values
+// Backend candidate → form values (dates stay as "YYYY-MM-DD" strings, or '' when empty)
 export function toFormValues(candidate) {
   const values = { ...candidate }
   for (const field of DATE_FIELDS) {
-    values[field] = candidate[field] ? dayjs(candidate[field]) : null
+    values[field] = candidate[field] ?? ''
   }
   return values
 }
@@ -23,7 +23,7 @@ export function toFormValues(candidate) {
 export function toApiValues(values) {
   const result = { ...values }
   for (const field of DATE_FIELDS) {
-    result[field] = values[field] ? values[field].format('YYYY-MM-DD') : null
+    result[field] = values[field] ? values[field] : null
   }
   // The typed payroll company name only counts for "Other"
   if (result.payrollCompany !== 'Other') result.payrollCompanyOther = null

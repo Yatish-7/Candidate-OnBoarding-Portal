@@ -1,50 +1,54 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { Alert, App as AntApp, Button, Col, Form, Grid, Input, Row, Select, Spin, Typography } from 'antd'
-import { ArrowLeftOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, CheckOutlined, MailOutlined } from '@ant-design/icons'
 import Logo from '../components/Logo.jsx'
 import PublicFooter from '../components/PublicFooter.jsx'
+import { Alert, Button, Field, FullscreenSpinner, Input, PasswordInput, Select, useToast } from '../ui/index.js'
 import { useAuth } from '../context/AuthContext.js'
 import { getMockUserOptions, MOCK_PASSWORD } from '../mocks/data.js'
 import { getErrorMessage } from '../utils/errors.js'
 import { homePathForRole } from '../utils/roles.js'
 import { USE_MOCKS } from '../utils/env.js'
-import { companyEmailRule } from '../utils/emailDomains.js'
+import { isAllowedEmail } from '../utils/emailDomains.js'
 import { clearSignedOutReason, getSignedOutReason } from '../utils/session.js'
 
-// Left half of the login page (hidden on phones): the brand, styled like the
-// landing hero — the logo floats over a soft brand glow on a light, airy panel
-// (no white card), so the company mark reads cleanly and not dull.
+// Left half of the login page (hidden on phones): the brand, with the logo floating
+// over a soft brand glow on a light, airy panel.
 function BrandPanel() {
   return (
     <div
+      className="relative hidden flex-col justify-center gap-6 overflow-hidden border-r border-line p-14 lg:flex"
       style={{
-        height: '100%',
-        padding: 56,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        gap: 20,
-        borderRight: '1px solid #e8edf3',
         background:
-          'radial-gradient(700px 380px at 22% 8%, rgba(43, 76, 155, 0.12), transparent 60%),' +
-          'radial-gradient(560px 360px at 12% 70%, rgba(28, 159, 217, 0.1), transparent 60%),' +
-          'radial-gradient(620px 380px at 90% 92%, rgba(225, 53, 42, 0.07), transparent 60%),' +
-          '#f7f9fc',
+          'radial-gradient(700px 380px at 22% 8%, rgba(99, 102, 241, 0.14), transparent 60%),' +
+          'radial-gradient(560px 360px at 12% 70%, rgba(139, 92, 246, 0.12), transparent 60%),' +
+          'radial-gradient(620px 380px at 90% 92%, rgba(236, 72, 153, 0.06), transparent 60%),' +
+          'transparent',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-        <div className="oi-logo-stage">
-          <span className="oi-logo-glow" aria-hidden="true" />
-          <Logo className="oi-logo-float" height={92} />
-        </div>
+      <span className="oi-orb" style={{ width: 300, height: 300, top: -80, left: -60, background: 'rgba(99,102,241,0.2)' }} />
+      <span className="oi-orb" style={{ width: 260, height: 260, bottom: -70, left: 140, background: 'rgba(139,92,246,0.16)', animationDelay: '1.4s' }} />
+
+      <div className="oi-logo-stage relative self-start">
+        <span className="oi-logo-glow" aria-hidden="true" />
+        <Logo className="oi-logo-float" height={88} />
       </div>
-      <Typography.Title level={2} style={{ color: '#0f172a', margin: '4px 0 0', maxWidth: 460, lineHeight: 1.25 }}>
-        Candidate onboarding, start to finish.
-      </Typography.Title>
-      <Typography.Paragraph style={{ color: '#475569', fontSize: 16, maxWidth: 450, margin: 0 }}>
+      <h2 className="relative max-w-md text-4xl font-extrabold leading-[1.12] tracking-tight text-ink">
+        Candidate onboarding, <span className="oi-gradient-text">start to finish.</span>
+      </h2>
+      <p className="relative max-w-md text-base leading-relaxed text-slate-600">
         Submit, review and approve placed candidates — Sales Lead, HR, Contracts and Accounts, all in one clean workflow.
-      </Typography.Paragraph>
+      </p>
+      <ul className="relative mt-1 space-y-2.5">
+        {['Staged approvals with a full audit trail', 'Automatic email at every stage', 'Role-based access for every team'].map((t) => (
+          <li key={t} className="flex items-center gap-2.5 text-sm font-medium text-slate-700">
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-brand/10 text-brand">
+              <CheckOutlined className="text-[10px]" />
+            </span>
+            {t}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -53,139 +57,125 @@ export default function Login() {
   const { user, loading, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const { message } = AntApp.useApp()
-  // Form.useForm gives us a handle to fill in fields from code (used by the mock-user picker)
-  const [form] = Form.useForm()
+  const toast = useToast()
+  const [values, setValues] = useState({ email: '', password: '' })
+  const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
-  // Why the user was just signed out, if anything (read once, then cleared)
   const [signedOutReason] = useState(getSignedOutReason)
+  const [showReason, setShowReason] = useState(true)
   useEffect(() => clearSignedOutReason(), [])
-  // screens.md is true on tablets and wider, where the brand panel (with its logo) is visible
-  const screens = Grid.useBreakpoint()
 
-  if (loading) {
-    return <Spin fullscreen />
+  if (loading) return <FullscreenSpinner />
+  if (user) return <Navigate to={homePathForRole(user.role)} replace />
+
+  const set = (name) => (e) => setValues((v) => ({ ...v, [name]: e.target.value }))
+
+  function validate() {
+    const next = {}
+    if (!values.email.trim()) next.email = 'Please enter your email'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) next.email = 'Please enter a valid email'
+    else if (!isAllowedEmail(values.email)) next.email = 'Please use your correct company email id (for example name@intellectt.com)'
+    if (!values.password) next.password = 'Please enter your password'
+    setErrors(next)
+    return Object.keys(next).length === 0
   }
 
-  // Already logged in? Skip the login page.
-  if (user) {
-    return <Navigate to={homePathForRole(user.role)} replace />
-  }
-
-  // Runs only when all fields pass validation
-  async function handleFinish(values) {
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!validate()) return
     setSubmitting(true)
     try {
       const loggedIn = await login(values.email, values.password)
       const home = homePathForRole(loggedIn.role)
-      // Go back to the page they tried to open before being sent to login (or their home)
       navigate(location.state?.from?.pathname ?? home, { replace: true })
     } catch (error) {
-      message.error(getErrorMessage(error, 'Login failed'))
+      toast.error(getErrorMessage(error, 'Login failed'))
       setSubmitting(false)
     }
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-      <Row style={{ flex: 1 }}>
-        {/* xs={0} hides this column on phones */}
-        <Col xs={0} md={12} lg={13}>
-          <BrandPanel />
-        </Col>
-
-        <Col
-          xs={24}
-          md={12}
-          lg={11}
-          style={{ display: 'flex', flexDirection: 'column', background: '#fff' }}
-        >
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ width: '100%', maxWidth: 380 }} className="oi-fade-up">
-          <Link to="/" style={{ color: '#94a3b8', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 18 }}>
-            <ArrowLeftOutlined /> Back to home
-          </Link>
-          {/* On phones the brand panel is hidden, so show the logo here instead */}
-          {!screens.md && (
-            <div style={{ marginBottom: 32 }}>
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.2fr_1fr]">
+      <BrandPanel />
+      <div className="flex flex-col">
+        <div className="flex flex-1 items-center justify-center p-6">
+          <div className="oi-fade-up w-full max-w-sm">
+            <Link to="/" className="mb-5 inline-flex items-center gap-1.5 text-[13px] text-faint hover:text-ink">
+              <ArrowLeftOutlined /> Back to home
+            </Link>
+            {/* On phones the brand panel is hidden, so show the logo here instead */}
+            <div className="mb-8 lg:hidden">
               <Logo size="md" />
             </div>
-          )}
-          {/* Why they were signed out (idle timeout, signed in elsewhere, ...) */}
-          {signedOutReason && (
-            <Alert type="info" showIcon closable title={signedOutReason} style={{ marginBottom: 20 }} />
-          )}
-          <Typography.Title level={2} style={{ marginBottom: 4 }}>
-            Welcome back
-          </Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 28 }}>
-            Sign in with your work email to continue.
-          </Typography.Paragraph>
+            {signedOutReason && showReason && (
+              <Alert
+                tone="info"
+                className="mb-5"
+                title={signedOutReason}
+                action={
+                  <button type="button" onClick={() => setShowReason(false)} className="text-faint hover:text-ink" aria-label="Dismiss">
+                    ×
+                  </button>
+                }
+              />
+            )}
+            <div className="rounded-2xl border border-line bg-white/80 p-6 shadow-[var(--shadow-card)] backdrop-blur sm:p-7">
+            <h1 className="text-2xl font-bold text-ink">Welcome back</h1>
+            <p className="mb-7 mt-1 text-sm text-muted">Sign in with your work email to continue.</p>
 
-          <Form form={form} layout="vertical" onFinish={handleFinish} requiredMark={false} size="large">
-            <Form.Item
-              label="Email"
-              name="email"
-              rules={[
-                { required: true, message: 'Please enter your email' },
-                { type: 'email', message: 'Please enter a valid email' },
-                companyEmailRule,
-              ]}
-            >
-              <Input prefix={<MailOutlined />} placeholder="you@intellectt.com" autoComplete="username" />
-            </Form.Item>
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+              <Field label="Email" required error={errors.email}>
+                <Input
+                  size="lg"
+                  prefix={<MailOutlined />}
+                  placeholder="you@intellectt.com"
+                  autoComplete="username"
+                  value={values.email}
+                  invalid={!!errors.email}
+                  onChange={set('email')}
+                />
+              </Field>
+              <Field label="Password" required error={errors.password}>
+                <PasswordInput size="lg" autoComplete="current-password" value={values.password} invalid={!!errors.password} onChange={set('password')} />
+              </Field>
+              <div className="-mt-1 text-right">
+                <Link to="/forgot-password" className="text-[13px] text-brand hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+              <Button type="submit" variant="primary" size="lg" block loading={submitting}>
+                Sign in
+              </Button>
+            </form>
 
-            <Form.Item
-              label="Password"
-              name="password"
-              rules={[{ required: true, message: 'Please enter your password' }]}
-            >
-              <Input.Password prefix={<LockOutlined />} autoComplete="current-password" />
-            </Form.Item>
-
-            <div style={{ textAlign: 'right', margin: '-8px 0 16px' }}>
-              <Link to="/forgot-password" style={{ fontSize: 13 }}>
-                Forgot password?
-              </Link>
+            <p className="mt-5 text-center text-xs text-muted">
+              For authorized Intellectt users only. Sign-ins and changes are logged, and candidate data must be used only for onboarding.
+            </p>
             </div>
 
-            <Button type="primary" htmlType="submit" block loading={submitting}>
-              Sign in
-            </Button>
-          </Form>
-
-          {/* Acceptable-use notice shown before sign-in */}
-          <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 20, marginBottom: 0, textAlign: 'center' }}>
-            For authorized Intellectt users only. Sign-ins and changes are logged, and
-            candidate data must be used only for onboarding.
-          </Typography.Paragraph>
-
-          {USE_MOCKS && (
-            <Alert
-              type="info"
-              showIcon
-              style={{ marginTop: 28 }}
-              title="Mock mode"
-              description={
-                <>
-                  <div style={{ marginBottom: 8 }}>
-                    Every mock user's password is <b>{MOCK_PASSWORD}</b>. Pick one to fill the form:
+            {USE_MOCKS && (
+              <Alert
+                tone="info"
+                className="mt-7"
+                title="Mock mode"
+                message={
+                  <div className="space-y-2">
+                    <div>
+                      Every mock user&apos;s password is <b>{MOCK_PASSWORD}</b>. Pick one to fill the form:
+                    </div>
+                    <Select
+                      placeholder="Choose a mock user"
+                      options={getMockUserOptions()}
+                      onChange={(email) => setValues({ email, password: MOCK_PASSWORD })}
+                    />
                   </div>
-                  <Select
-                    placeholder="Choose a mock user"
-                    options={getMockUserOptions()}
-                    style={{ width: '100%' }}
-                    onChange={(email) => form.setFieldsValue({ email, password: MOCK_PASSWORD })}
-                  />
-                </>
-              }
-            />
-          )}
-        </div>
+                }
+              />
+            )}
+          </div>
         </div>
         <PublicFooter />
-        </Col>
-      </Row>
+      </div>
     </div>
   )
 }

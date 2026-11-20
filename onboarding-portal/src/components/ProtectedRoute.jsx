@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
-import { Result, Spin } from 'antd'
+import { FullscreenSpinner } from '../ui/Spinner.jsx'
+import Result from '../ui/Result.jsx'
 import { useAuth } from '../context/AuthContext.js'
 
 // Wrap a page with this to require login, and optionally a specific role:
@@ -9,7 +10,7 @@ export default function ProtectedRoute({ roles, children }) {
   const location = useLocation()
 
   if (loading) {
-    return <Spin fullscreen />
+    return <FullscreenSpinner />
   }
 
   if (!user) {

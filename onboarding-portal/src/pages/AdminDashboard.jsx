@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react'
-import { App as AntApp, Card, Col, Row, Statistic, Typography } from 'antd'
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
   LogoutOutlined,
-  UserDeleteOutlined,
   UserAddOutlined,
+  UserDeleteOutlined,
 } from '@ant-design/icons'
 import { getDashboardSummary } from '../api/dashboard.js'
 import PageHeader from '../components/PageHeader.jsx'
-import { getErrorMessage } from '../utils/errors.js'
-import { STATUSES, SUMMARY_GROUPS } from '../utils/status.js'
 import CandidateFilters from '../components/CandidateFilters.jsx'
 import CandidateList from './CandidateList.jsx'
+import { Card, Stat, useToast } from '../ui/index.js'
+import { getErrorMessage } from '../utils/errors.js'
+import { STATUSES, SUMMARY_GROUPS } from '../utils/status.js'
 
 // The counters. "key" matches a field in the /api/dashboard/summary response.
-// "color" is the icon color, "background" the soft square behind it.
 const COUNTERS = [
   { key: 'pending', title: 'Pending', icon: <ClockCircleOutlined />, color: '#d97706', background: '#fffbeb' },
   { key: 'approved', title: 'Approved', icon: <CheckCircleOutlined />, color: '#16a34a', background: '#f0fdf4' },
@@ -26,40 +25,23 @@ const COUNTERS = [
   { key: 'exited', title: 'Exited', icon: <LogoutOutlined />, color: '#c026d3', background: '#fdf4ff' },
 ]
 
-// Small text under each number explaining which statuses it includes
 function groupDescription(key) {
   return SUMMARY_GROUPS[key].map((status) => STATUSES[status].label).join(' · ')
 }
 
 function CounterCard({ counter, value, loading }) {
   return (
-    <Card style={{ height: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-        <Statistic
-          title={counter.title}
-          value={value}
-          loading={loading}
-          styles={{ content: { fontSize: 30, fontWeight: 600 } }}
-        />
+    <Card className="group h-full" hover bodyClassName="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <Stat title={counter.title} value={value} loading={loading} />
         <div
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            background: counter.background,
-            color: counter.color,
-            display: 'grid',
-            placeItems: 'center',
-            fontSize: 20,
-            flexShrink: 0,
-          }}
+          className="grid size-11 shrink-0 place-items-center rounded-xl text-xl ring-1 ring-inset ring-black/5 transition-transform duration-300 group-hover:scale-105"
+          style={{ background: counter.background, color: counter.color }}
         >
           {counter.icon}
         </div>
       </div>
-      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-        {groupDescription(counter.key)}
-      </Typography.Text>
+      <p className="mt-2 text-xs text-muted">{groupDescription(counter.key)}</p>
     </Card>
   )
 }
@@ -67,15 +49,15 @@ function CounterCard({ counter, value, loading }) {
 // Super Admin: counts at the top, then the full candidate table (the same one as the Candidates page)
 export default function AdminDashboard() {
   const [summary, setSummary] = useState(null)
-  // date range, recruiter, team ... the counters and the table below both follow them
   const [filters, setFilters] = useState({})
-  const { message } = AntApp.useApp()
+  const toast = useToast()
 
   useEffect(() => {
     getDashboardSummary(filters)
       .then(setSummary)
-      .catch((error) => message.error(getErrorMessage(error, 'Could not load the summary')))
-  }, [filters, message])
+      .catch((error) => toast.error(getErrorMessage(error, 'Could not load the summary')))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters])
 
   return (
     <>
@@ -83,14 +65,11 @@ export default function AdminDashboard() {
 
       <CandidateFilters filters={filters} onChange={setFilters} />
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {COUNTERS.map((counter) => (
-          // One card per row on phones, two on tablets, all six side by side on wide screens
-          <Col key={counter.key} xs={24} sm={12} xl={{ flex: '1 1 0' }}>
-            <CounterCard counter={counter} value={summary?.[counter.key] ?? 0} loading={!summary} />
-          </Col>
+          <CounterCard key={counter.key} counter={counter} value={summary?.[counter.key] ?? 0} loading={!summary} />
         ))}
-      </Row>
+      </div>
 
       <CandidateList embedded filters={filters} />
     </>

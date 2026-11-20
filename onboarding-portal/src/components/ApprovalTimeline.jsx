@@ -1,4 +1,3 @@
-import { Tag, Timeline, Typography } from 'antd'
 import {
   CalendarOutlined,
   CheckCircleFilled,
@@ -9,6 +8,8 @@ import {
   SafetyCertificateFilled,
   SendOutlined,
 } from '@ant-design/icons'
+import Timeline from '../ui/Timeline.jsx'
+import Badge from '../ui/Badge.jsx'
 import { formatDateTime } from '../utils/format.js'
 import { ROLE_LABELS } from '../utils/roles.js'
 import { STAGE_LABELS } from '../utils/status.js'
@@ -70,17 +71,18 @@ function parseChanges(action, comment) {
 function ChangeList({ action, comment }) {
   const { rows, others, reason } = parseChanges(action, comment)
   return (
-    <div style={{ margin: '6px 0', padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8 }}>
+    <div className="my-1.5 rounded-lg border border-amber-200 bg-warning-soft px-3 py-2 text-sm">
       {rows.map((r, i) => (
         <div key={i}>
-          <Typography.Text strong>{r.label}: </Typography.Text>
-          <Typography.Text delete type="secondary">{r.oldValue}</Typography.Text> → <Typography.Text strong>{r.newValue}</Typography.Text>
+          <span className="font-semibold text-ink">{r.label}: </span>
+          <span className="text-muted line-through">{r.oldValue}</span> →{' '}
+          <span className="font-semibold text-ink">{r.newValue}</span>
         </div>
       ))}
       {others.map((t, i) => (
         <div key={`o${i}`}>{t}</div>
       ))}
-      {reason && <div style={{ marginTop: 4, color: '#64748b' }}>Reason: {reason}</div>}
+      {reason && <div className="mt-1 text-muted">Reason: {reason}</div>}
     </div>
   )
 }
@@ -90,44 +92,32 @@ function ChangeList({ action, comment }) {
 export default function ApprovalTimeline({ trail }) {
   const items = trail.map((entry) => {
     const action = ACTIONS[entry.action] ?? { text: entry.action, icon: null, color: '#4f46e5' }
-
     return {
       key: entry.id,
-      icon: <span style={{ color: action.color, fontSize: 16 }}>{action.icon}</span>,
+      color: action.color,
+      icon: action.icon ? <span style={{ color: action.color }}>{action.icon}</span> : undefined,
       content: (
-        <div style={{ paddingBottom: 4 }}>
-          <div>
-            <Typography.Text strong>{entry.actorName}</Typography.Text>{' '}
-            <Tag variant="filled">{ROLE_LABELS[entry.actorRole] ?? entry.actorRole}</Tag>
+        <div className="pb-1 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-ink">{entry.actorName}</span>
+            <Badge tone="neutral">{ROLE_LABELS[entry.actorRole] ?? entry.actorRole}</Badge>
           </div>
-          <div style={{ marginTop: 2 }}>
+          <div className="mt-0.5 text-ink">
             {action.text}
-            {entry.stage && (
-              <Typography.Text type="secondary"> · {STAGE_LABELS[entry.stage] ?? entry.stage} stage</Typography.Text>
-            )}
+            {entry.stage && <span className="text-muted"> · {STAGE_LABELS[entry.stage] ?? entry.stage} stage</span>}
           </div>
           {entry.comment && (entry.action === 'DETAILS_EDITED' || entry.action === 'RATES_CHANGED') && (
             <ChangeList action={entry.action} comment={entry.comment} />
           )}
           {entry.comment && entry.action !== 'DETAILS_EDITED' && entry.action !== 'RATES_CHANGED' && (
-            <div
-              style={{
-                margin: '6px 0',
-                padding: '8px 12px',
-                background: '#f8fafc',
-                border: '1px solid #e8ecf3',
-                borderRadius: 8,
-              }}
-            >
-              {entry.comment}
-            </div>
+            <div className="my-1.5 rounded-lg border border-line bg-slate-50 px-3 py-2">{entry.comment}</div>
           )}
           {entry.emailsSentTo.length > 0 && (
-            <div style={{ fontSize: 12, color: '#64748b' }}>
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-muted">
               <MailOutlined /> Email sent to {entry.emailsSentTo.join(', ')}
             </div>
           )}
-          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{formatDateTime(entry.createdAt)}</div>
+          <div className="mt-1 text-xs text-faint">{formatDateTime(entry.createdAt)}</div>
         </div>
       ),
     }
@@ -140,18 +130,19 @@ export default function ApprovalTimeline({ trail }) {
 export function ChangeHistory({ trail }) {
   const changes = trail.filter((e) => e.action === 'DETAILS_EDITED' || e.action === 'RATES_CHANGED')
   if (changes.length === 0) {
-    return <Typography.Text type="secondary">No changes yet. Edits and rate changes will be listed here.</Typography.Text>
+    return <p className="text-sm text-muted">No changes yet. Edits and rate changes will be listed here.</p>
   }
   return (
-    <div>
+    <div className="space-y-3">
       {[...changes].reverse().map((entry) => (
-        <div key={entry.id} style={{ marginBottom: 12 }}>
-          <div>
-            <Typography.Text strong>{entry.action === 'RATES_CHANGED' ? 'Rates changed' : 'Details edited'}</Typography.Text>{' '}
-            by <Typography.Text strong>{entry.actorName}</Typography.Text>{' '}
-            <Tag variant="filled">{ROLE_LABELS[entry.actorRole] ?? entry.actorRole}</Tag>
+        <div key={entry.id}>
+          <div className="flex flex-wrap items-center gap-1.5 text-sm">
+            <span className="font-semibold text-ink">{entry.action === 'RATES_CHANGED' ? 'Rates changed' : 'Details edited'}</span>
+            <span className="text-muted">by</span>
+            <span className="font-semibold text-ink">{entry.actorName}</span>
+            <Badge tone="neutral">{ROLE_LABELS[entry.actorRole] ?? entry.actorRole}</Badge>
           </div>
-          <div style={{ fontSize: 12, color: '#94a3b8' }}>{formatDateTime(entry.createdAt)}</div>
+          <div className="text-xs text-faint">{formatDateTime(entry.createdAt)}</div>
           {entry.comment && <ChangeList action={entry.action} comment={entry.comment} />}
         </div>
       ))}

@@ -1,65 +1,83 @@
 import { useState } from 'react'
-import { App as AntApp, Form, Input, Modal, Select } from 'antd'
 import { createUser, updateUser } from '../api/users.js'
+import Modal from '../ui/Modal.jsx'
+import Button from '../ui/Button.jsx'
+import Field from '../ui/Field.jsx'
+import Select from '../ui/Select.jsx'
+import { Input, PasswordInput } from '../ui/Input.jsx'
+import { useToast } from '../ui/feedback.jsx'
 import { useAuth } from '../context/AuthContext.js'
-import { getErrorMessage, showFieldErrors } from '../utils/errors.js'
+import { fieldErrorMap, getErrorMessage } from '../utils/errors.js'
 import { RECRUITER_LOCATION_OPTIONS } from '../utils/options.js'
 import { ROLE_OPTIONS, TEAM_ROLES } from '../utils/roles.js'
-import { companyEmailRule } from '../utils/emailDomains.js'
-import { PASSWORD_HINT, passwordRules } from '../utils/passwordRules.js'
+import { isAllowedEmail } from '../utils/emailDomains.js'
+import { PASSWORD_HINT, validatePassword } from '../utils/passwordRules.js'
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // Pop-up to add a user (user = null) or edit one.
-//   teams         → [{ id, name }] for the team dropdown
-//   currentUserId → the logged-in admin, who can't change their own role
-//   onSaved(user) → called with the saved user from the backend
 export default function UserFormModal({ user, teams, currentUserId, onCancel, onSaved }) {
-  const [form] = Form.useForm()
+  const [values, setValues] = useState(() => ({
+    name: user?.name ?? '',
+    email: user?.email ?? '',
+    password: '',
+    role: user?.role ?? 'RECRUITER',
+    location: user?.location ?? undefined,
+    teamId: user?.teamId ?? undefined,
+  }))
+  const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
-  const { message } = AntApp.useApp()
+  const toast = useToast()
   const { user: currentUser } = useAuth()
   const isEditingSelf = user?.id === currentUserId
 
   // An Admin manages every role except Super Admin, so hide that option for them.
-  const roleOptions =
-    currentUser.role === 'ADMIN'
-      ? ROLE_OPTIONS.filter((option) => option.value !== 'SUPER_ADMIN')
-      : ROLE_OPTIONS
+  const roleOptions = currentUser.role === 'ADMIN' ? ROLE_OPTIONS.filter((o) => o.value !== 'SUPER_ADMIN') : ROLE_OPTIONS
+  const needsTeam = TEAM_ROLES.includes(values.role)
 
-  // Show the team field only for roles that belong to a team (Recruiter, Sales Lead)
-  const role = Form.useWatch('role', form)
-  const needsTeam = TEAM_ROLES.includes(role)
+  function set(name, value) {
+    setValues((v) => ({ ...v, [name]: value }))
+    setErrors((e) => ({ ...e, [name]: undefined }))
+  }
+
+  function validate() {
+    const e = {}
+    if (!values.name.trim()) e.name = 'Enter the full name'
+    if (!values.email.trim()) e.email = 'Enter the work email'
+    else if (!EMAIL_RE.test(values.email)) e.email = 'Enter a valid email'
+    else if (!isAllowedEmail(values.email)) e.email = 'Please use your correct company email id (for example name@intellectt.com)'
+    if (!values.role) e.role = 'Choose a role'
+    if (!user) {
+      const pw = validatePassword(values.password, 'Set a password for this user')
+      if (pw) e.password = pw
+    }
+    return e
+  }
 
   async function handleOk() {
-    let values
-    try {
-      values = await form.validateFields()
-    } catch {
-      return // antd shows the problems under the fields
-    }
+    const found = validate()
+    setErrors(found)
+    if (Object.values(found).some(Boolean)) return
 
     const data = {
       name: values.name,
       email: values.email,
       role: values.role,
-      teamId: needsTeam ? values.teamId : null,
-      location: role === 'RECRUITER' ? (values.location ?? null) : null,
+      teamId: needsTeam ? values.teamId ?? null : null,
+      location: values.role === 'RECRUITER' ? values.location ?? null : null,
       active: user?.active ?? true,
     }
-    // Only new users get a password here (a temporary one: they must change it at first sign-in).
-    if (!user) {
-      data.password = values.password
-    }
+    if (!user) data.password = values.password
 
     setSaving(true)
     try {
       const saved = user ? await updateUser(user.id, data) : await createUser(data)
-      message.success(user ? 'User updated' : `${saved.name} added`)
+      toast.success(user ? 'User updated' : `${saved.name} added`)
       onSaved(saved)
     } catch (error) {
-      // Errors about a field (e.g. "email already exists") go under that field
-      if (!showFieldErrors(form, error)) {
-        message.error(getErrorMessage(error, 'Could not save the user'))
-      }
+      const map = fieldErrorMap(error)
+      if (map) setErrors(map)
+      else toast.error(getErrorMessage(error, 'Could not save the user'))
       setSaving(false)
     }
   }
@@ -67,76 +85,49 @@ export default function UserFormModal({ user, teams, currentUserId, onCancel, on
   return (
     <Modal
       open
+      onClose={onCancel}
       title={user ? `Edit ${user.name}` : 'Add user'}
-      okText={user ? 'Save changes' : 'Add user'}
-      confirmLoading={saving}
-      onOk={handleOk}
-      onCancel={onCancel}
+      footer={
+        <>
+          <Button variant="default" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="primary" loading={saving} onClick={handleOk}>
+            {user ? 'Save changes' : 'Add user'}
+          </Button>
+        </>
+      }
     >
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={user ?? { role: 'RECRUITER' }}
-        requiredMark={false}
-      >
-        <Form.Item
-          name="name"
-          label="Full name"
-          rules={[{ required: true, whitespace: true, message: 'Enter the full name' }]}
-        >
-          <Input placeholder="Priya Shah" />
-        </Form.Item>
-
-        <Form.Item
-          name="email"
-          label="Work email"
-          rules={[
-            { required: true, message: 'Enter the work email' },
-            { type: 'email', message: 'Enter a valid email' },
-            companyEmailRule,
-          ]}
-          extra={user ? null : 'They sign in with this email.'}
-        >
-          <Input placeholder="name@intellectt.com" />
-        </Form.Item>
-
-        {/* Password is set by the admin at creation (the backend has no change-password flow yet) */}
+      <div className="space-y-4">
+        <Field label="Full name" required error={errors.name}>
+          <Input placeholder="Priya Shah" value={values.name} invalid={!!errors.name} onChange={(e) => set('name', e.target.value)} />
+        </Field>
+        <Field label="Work email" required error={errors.email} hint={!user && !errors.email ? 'They sign in with this email.' : undefined}>
+          <Input placeholder="name@intellectt.com" value={values.email} invalid={!!errors.email} onChange={(e) => set('email', e.target.value)} />
+        </Field>
         {!user && (
-          <Form.Item
-            name="password"
+          <Field
             label="Temporary password"
-            rules={passwordRules('Set a password for this user')}
-            extra="Share it with them privately. They must replace it with their own at first sign-in."
+            required
+            error={errors.password}
+            hint={!errors.password ? 'Share it privately. They must replace it with their own at first sign-in.' : undefined}
           >
-            <Input.Password placeholder={PASSWORD_HINT} autoComplete="new-password" />
-          </Form.Item>
+            <PasswordInput placeholder={PASSWORD_HINT} autoComplete="new-password" value={values.password} invalid={!!errors.password} onChange={(e) => set('password', e.target.value)} />
+          </Field>
         )}
-
-        <Form.Item
-          name="role"
-          label="Role"
-          rules={[{ required: true, message: 'Choose a role' }]}
-          extra={isEditingSelf ? "You can't change your own role." : null}
-        >
-          <Select options={roleOptions} disabled={isEditingSelf} />
-        </Form.Item>
-
-        {role === 'RECRUITER' && (
-          <Form.Item
-            name="location"
-            label="Location"
-            extra="Shown automatically on every candidate this recruiter submits."
-          >
-            <Select allowClear placeholder="Choose their office" options={RECRUITER_LOCATION_OPTIONS} />
-          </Form.Item>
+        <Field label="Role" required error={errors.role} hint={isEditingSelf ? "You can't change your own role." : undefined}>
+          <Select options={roleOptions} value={values.role} disabled={isEditingSelf} onChange={(val) => set('role', val)} />
+        </Field>
+        {values.role === 'RECRUITER' && (
+          <Field label="Location" hint="Shown automatically on every candidate this recruiter submits.">
+            <Select allowClear placeholder="Choose their office" options={RECRUITER_LOCATION_OPTIONS} value={values.location} onChange={(val) => set('location', val)} />
+          </Field>
         )}
-
         {needsTeam && (
-          <Form.Item
-            name="teamId"
+          <Field
             label="Team (optional)"
-            extra={
-              role === 'SALES_LEAD'
+            hint={
+              values.role === 'SALES_LEAD'
                 ? 'Optional — you can assign the team later from the Teams page (each team has one Sales Lead).'
                 : 'Optional — you can add them to a team later from the Teams page.'
             }
@@ -145,10 +136,12 @@ export default function UserFormModal({ user, teams, currentUserId, onCancel, on
               allowClear
               placeholder="Choose a team (optional)"
               options={teams.map((team) => ({ value: team.id, label: team.name }))}
+              value={values.teamId}
+              onChange={(val) => set('teamId', val)}
             />
-          </Form.Item>
+          </Field>
         )}
-      </Form>
+      </div>
     </Modal>
   )
 }

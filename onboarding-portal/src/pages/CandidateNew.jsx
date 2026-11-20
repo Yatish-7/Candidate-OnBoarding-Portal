@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { App as AntApp } from 'antd'
 import { createCandidate } from '../api/candidates.js'
 import CandidateForm from '../components/CandidateForm.jsx'
 import PageHeader from '../components/PageHeader.jsx'
+import { useToast } from '../ui/feedback.jsx'
 import { useAuth } from '../context/AuthContext.js'
 import { NEW_CANDIDATE_VALUES } from '../utils/candidateForm.js'
 
@@ -10,7 +10,7 @@ import { NEW_CANDIDATE_VALUES } from '../utils/candidateForm.js'
 export default function CandidateNew() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { message } = AntApp.useApp()
+  const toast = useToast()
 
   async function handleSubmit(values) {
     // The location is copied from the recruiter's profile, so it has to be set first
@@ -18,7 +18,7 @@ export default function CandidateNew() {
       throw new Error('Your location is not set yet. Ask an admin to set it on the Users page.')
     }
     const created = await createCandidate(values)
-    message.success('Candidate submitted — your Sales Lead has been notified.')
+    toast.success('Candidate submitted — your Sales Lead has been notified.')
     navigate(`/candidates/${created.id}`)
   }
 

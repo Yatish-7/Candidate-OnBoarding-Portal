@@ -81,7 +81,7 @@ Browser (React SPA)  ──HTTPS/JSON, JWT──►  Spring Boot REST API  ─�
                                                  └──SMTP (async)──►  Mail server
 ```
 
-- **Frontend:** a single-page app (React 19, Vite 8, Ant Design 6). Holds no business
+- **Frontend:** a single-page app (React 19, Vite 8, Tailwind CSS). Holds no business
   rules that matter for security, and talks to the API only through `src/api/*.js`.
 - **Backend:** a stateless REST API (Spring Boot 4.1, Java 17). It enforces every rule,
   owns the workflow state machine, sends email, and writes the audit trail.
@@ -358,7 +358,7 @@ Summary only; detail and test evidence in [SECURITY.md](../SECURITY.md) and [COM
 | DB connections | Never exhausted | HikariCP pool (default 5; 30 in the 1000-user test, set with `DB_POOL_SIZE`), `open-in-view=false`, `@EntityGraph` to avoid N+1 |
 | Overload behaviour | Degrade, don't sign users out | DB errors → 503 "busy", never 401 |
 | Auditability | Every change traceable | Envers on all tables |
-| Browser support | Current Chrome/Edge/Firefox/Safari, desktop-first | Responsive Ant Design layout |
+| Browser support | Current Chrome/Edge/Firefox/Safari, desktop-first | Responsive Tailwind layout (mobile-first) |
 
 ---
 

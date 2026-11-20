@@ -1,116 +1,112 @@
-import { Navigate, useNavigate } from 'react-router-dom'
-import { Button, Space, Spin, Typography } from 'antd'
-import { ArrowRightOutlined, AuditOutlined, MailOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
+import { Navigate } from 'react-router-dom'
+import {
+  ArrowRightOutlined,
+  AuditOutlined,
+  CheckCircleFilled,
+  MailOutlined,
+  RightOutlined,
+  SafetyCertificateOutlined,
+} from '@ant-design/icons'
 import { useAuth } from '../context/AuthContext.js'
-import Logo from '../components/Logo.jsx'
 import PublicFooter from '../components/PublicFooter.jsx'
+import Logo from '../components/Logo.jsx'
+import Button from '../ui/Button.jsx'
+import { FullscreenSpinner } from '../ui/Spinner.jsx'
 import { homePathForRole } from '../utils/roles.js'
 
-function Feature({ icon, title, text }) {
+function Feature({ icon, title, text, className }) {
   return (
-    <div className="oi-feature">
-      <div className="oi-feature-icon">{icon}</div>
-      <div style={{ color: '#0f172a', fontWeight: 600, marginBottom: 6, fontSize: 15.5 }}>{title}</div>
-      <div style={{ color: '#64748b', fontSize: 13.5, lineHeight: 1.6 }}>{text}</div>
+    <div
+      className={`group rounded-2xl border border-line bg-white/90 p-5 text-left shadow-[var(--shadow-card)] backdrop-blur transition-all duration-300 hover:-translate-y-1.5 hover:border-brand/30 hover:shadow-[var(--shadow-lift)] ${className ?? ''}`}
+    >
+      <div className="mb-3 grid size-11 place-items-center rounded-xl bg-gradient-to-br from-brand to-accent text-xl text-white shadow-[var(--shadow-brand)] transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
+        {icon}
+      </div>
+      <div className="mb-1.5 text-[15px] font-bold text-ink">{title}</div>
+      <p className="text-sm leading-relaxed text-muted">{text}</p>
     </div>
   )
 }
 
+const FLOW = ['Recruiter', 'Sales Lead', 'HR · Contracts', 'Payroll · Accounts', 'DOJ']
+
 export default function Landing() {
   const { user, loading } = useAuth()
-  const navigate = useNavigate()
 
-  if (loading) {
-    return <Spin fullscreen />
-  }
-  // Already signed in? Go straight to the app.
-  if (user) {
-    return <Navigate to={homePathForRole(user.role)} replace />
-  }
+  if (loading) return <FullscreenSpinner />
+  if (user) return <Navigate to={homePathForRole(user.role)} replace />
 
   return (
-    <div className="oi-landing">
-      <main
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '56px 24px',
-        }}
-      >
-        <div style={{ maxWidth: 900, width: '100%', textAlign: 'center' }}>
-          {/* The company logo, gently floating over a soft glow */}
-          <div className="oi-fade-up" style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+    <div className="oi-landing relative overflow-hidden">
+      {/* decorative floating orbs */}
+      <span className="oi-orb" style={{ width: 340, height: 340, top: -90, left: -70, background: 'rgba(99,102,241,0.22)' }} />
+      <span className="oi-orb" style={{ width: 300, height: 300, bottom: -70, right: -50, background: 'rgba(139,92,246,0.2)', animationDelay: '1.6s' }} />
+
+      {/* top bar */}
+      <main className="relative z-10 flex flex-1 items-center justify-center px-6 py-14">
+        <div className="w-full max-w-5xl text-center">
+          {/* The company logo, centered and gently floating over a soft glow */}
+          <div className="oi-fade-up mb-6 flex justify-center">
             <div className="oi-logo-stage">
               <span className="oi-logo-glow" aria-hidden="true" />
-              <Logo className="oi-logo-float" height={104} />
+              <Logo className="oi-logo-float" height={92} />
             </div>
           </div>
 
-          <div
-            className="oi-fade-up oi-delay-1"
-            style={{
-              color: '#2563eb',
-              fontWeight: 700,
-              letterSpacing: '0.18em',
-              fontSize: 13,
-              textTransform: 'uppercase',
-              marginBottom: 8,
-            }}
-          >
-            One Intellectt
+          <div className="oi-fade-up oi-delay-1 mb-4 inline-flex items-center gap-2 rounded-full border border-brand/20 bg-white/70 px-3.5 py-1 text-xs font-semibold text-brand backdrop-blur">
+            <span className="size-1.5 rounded-full bg-brand" /> One Intellectt
           </div>
 
-          <Typography.Title
-            className="oi-fade-up oi-delay-1"
-            style={{ color: '#0f172a', fontSize: 'clamp(30px, 5.2vw, 50px)', margin: '0 0 10px', letterSpacing: '-0.02em' }}
-          >
-            Candidate Onboarding &amp; Approval Portal
-          </Typography.Title>
+          <h1 className="oi-fade-up oi-delay-1 mx-auto max-w-3xl text-[clamp(32px,5.4vw,54px)] font-extrabold leading-[1.08] tracking-tight text-ink">
+            Candidate onboarding, <span className="oi-gradient-text">approved end to end.</span>
+          </h1>
 
-          <Typography.Paragraph
-            className="oi-fade-up oi-delay-2"
-            style={{ color: '#475569', fontSize: 16, maxWidth: 640, margin: '0 auto 30px', lineHeight: 1.65 }}
-          >
-            Move a placed candidate from recruiter submission through Sales Lead, HR, Contracts, Payroll
-            and Accounts — to final approval and Date of Joining. One clean, trackable workflow, with an
-            email at every stage.
-          </Typography.Paragraph>
+          <p className="oi-fade-up oi-delay-2 mx-auto mt-5 max-w-2xl text-base leading-relaxed text-slate-600">
+            Move a placed candidate from recruiter submission through Sales Lead, HR, Contracts, Payroll and Accounts —
+            to final approval and Date of Joining. One clean, trackable workflow, with an email at every stage.
+          </p>
 
-          <div
-            className="oi-fade-up oi-delay-3"
-            style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center', marginBottom: 36 }}
-          >
-            <Feature
-              icon={<AuditOutlined />}
-              title="Staged approvals"
-              text="Each role acts in turn, with a full audit trail of who approved what and when."
-            />
-            <Feature
-              icon={<MailOutlined />}
-              title="Email at every step"
-              text="The right people are notified automatically as a candidate moves through the flow."
-            />
-            <Feature
-              icon={<SafetyCertificateOutlined />}
-              title="Role-based access"
-              text="Recruiters, Sales Leads, HR, Contracts and the Super Admin each see exactly what they should."
-            />
-          </div>
-
-          <Button
-            className="oi-fade-up oi-delay-4"
-            type="primary"
-            size="large"
-            onClick={() => navigate('/login')}
-            style={{ height: 50, padding: '0 30px', fontSize: 16, fontWeight: 600 }}
-          >
-            <Space>
+          <div className="oi-fade-up oi-delay-3 mt-7 flex justify-center">
+            <Button to="/login" variant="primary" size="lg">
               Sign in to continue
               <ArrowRightOutlined />
-            </Space>
-          </Button>
+            </Button>
+          </div>
+
+          <div className="oi-fade-up oi-delay-3 mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted">
+            {['Role-based access', 'Full audit trail', 'Email at every stage'].map((t) => (
+              <span key={t} className="inline-flex items-center gap-1.5">
+                <CheckCircleFilled className="text-success" />
+                {t}
+              </span>
+            ))}
+          </div>
+
+          <div className="oi-fade-up oi-delay-4 mt-12 grid gap-4 text-left sm:grid-cols-3">
+            <Feature icon={<AuditOutlined />} title="Staged approvals" text="Each role acts in turn, with a full audit trail of who approved what and when." />
+            <Feature icon={<MailOutlined />} title="Email at every step" text="The right people are notified automatically as a candidate moves through the flow." />
+            <Feature icon={<SafetyCertificateOutlined />} title="Role-based access" text="Recruiters, Sales Leads, HR, Contracts and the Super Admin each see exactly what they should." />
+          </div>
+
+          <div className="oi-fade-up oi-delay-4 mt-12">
+            <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-faint">The workflow</div>
+            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2">
+              {FLOW.map((step, i) => (
+                <span key={step} className="flex items-center gap-2">
+                  <span
+                    className={
+                      i === FLOW.length - 1
+                        ? 'rounded-full bg-gradient-to-br from-brand to-accent px-3.5 py-1.5 text-sm font-semibold text-white shadow-[var(--shadow-brand)]'
+                        : 'rounded-full border border-line bg-white px-3.5 py-1.5 text-sm font-medium text-ink shadow-sm'
+                    }
+                  >
+                    {step}
+                  </span>
+                  {i < FLOW.length - 1 && <RightOutlined className="text-xs text-faint" />}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </main>
 

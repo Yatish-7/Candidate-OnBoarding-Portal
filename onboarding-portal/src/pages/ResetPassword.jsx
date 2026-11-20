@@ -1,131 +1,92 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Alert, App as AntApp, Button, Card, Form, Input, Typography } from 'antd'
-import { ArrowLeftOutlined, LockOutlined } from '@ant-design/icons'
-import Logo from '../components/Logo.jsx'
-import PublicFooter from '../components/PublicFooter.jsx'
+import { ArrowLeftOutlined } from '@ant-design/icons'
+import AuthShell from '../components/AuthShell.jsx'
+import { Alert, Button, Card, Field, PasswordInput, useToast } from '../ui/index.js'
 import { resetPassword } from '../api/auth.js'
 import { getErrorMessage } from '../utils/errors.js'
-import { PASSWORD_HINT, passwordRules } from '../utils/passwordRules.js'
+import { PASSWORD_HINT, validatePassword } from '../utils/passwordRules.js'
 
 // "Reset password" — reached from the emailed link (…/reset-password?token=XYZ).
-// Reads the token from the URL, takes a new password, and calls the backend.
 export default function ResetPassword() {
   const [params] = useSearchParams()
   const token = params.get('token')
   const navigate = useNavigate()
-  const { message } = AntApp.useApp()
+  const toast = useToast()
+  const [values, setValues] = useState({ password: '', confirm: '' })
+  const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
 
-  async function handleFinish(values) {
+  const set = (name) => (e) => setValues((v) => ({ ...v, [name]: e.target.value }))
+
+  function validate() {
+    const next = {}
+    const pw = validatePassword(values.password, 'Enter a new password')
+    if (pw) next.password = pw
+    if (!values.confirm) next.confirm = 'Re-enter the password'
+    else if (values.confirm !== values.password) next.confirm = 'The passwords do not match'
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!validate()) return
     setSubmitting(true)
     try {
       await resetPassword(token, values.password)
       setDone(true)
-      message.success('Password reset — you can now sign in')
-    } catch (error) {
-      message.error(getErrorMessage(error, 'Could not reset the password'))
+      toast.success('Password reset — you can now sign in')
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not reset the password'))
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f7fa' }}>
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ width: '100%', maxWidth: 420 }} className="oi-fade-up">
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-            <Logo height={44} />
-          </div>
-
+    <AuthShell>
           <Card>
             {!token ? (
               <>
-                <Typography.Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
-                  Invalid reset link
-                </Typography.Title>
-                <Alert
-                  type="error"
-                  showIcon
-                  message="This link is missing or invalid"
-                  description="Request a new password reset link to continue."
-                />
-                <Button type="primary" block style={{ marginTop: 16 }} onClick={() => navigate('/forgot-password')}>
+                <h1 className="mb-2 text-xl font-semibold text-ink">Invalid reset link</h1>
+                <Alert tone="error" title="This link is missing or invalid" message="Request a new password reset link to continue." />
+                <Button variant="primary" block className="mt-4" onClick={() => navigate('/forgot-password')}>
                   Request a new link
                 </Button>
               </>
             ) : done ? (
               <>
-                <Typography.Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
-                  Password reset
-                </Typography.Title>
-                <Alert
-                  type="success"
-                  showIcon
-                  message="All set"
-                  description="Your password has been changed. You can now sign in with your new password."
-                />
-                <Button type="primary" block style={{ marginTop: 16 }} onClick={() => navigate('/login')}>
+                <h1 className="mb-2 text-xl font-semibold text-ink">Password reset</h1>
+                <Alert tone="success" title="All set" message="Your password has been changed. You can now sign in with your new password." />
+                <Button variant="primary" block className="mt-4" onClick={() => navigate('/login')}>
                   Go to sign in
                 </Button>
               </>
             ) : (
-              <>
-                <Typography.Title level={3} style={{ marginTop: 0, marginBottom: 4 }}>
-                  Choose a new password
-                </Typography.Title>
-                <Typography.Paragraph type="secondary" style={{ marginBottom: 20 }}>
-                  Enter a new password for your account.
-                </Typography.Paragraph>
-
-                <Form layout="vertical" onFinish={handleFinish} requiredMark={false} size="large">
-                  <Form.Item
-                    label="New password"
-                    name="password"
-                    rules={passwordRules('Enter a new password')}
-                    extra={PASSWORD_HINT}
-                    hasFeedback
-                  >
-                    <Input.Password prefix={<LockOutlined />} autoComplete="new-password" />
-                  </Form.Item>
-
-                  <Form.Item
-                    label="Confirm password"
-                    name="confirm"
-                    dependencies={['password']}
-                    hasFeedback
-                    rules={[
-                      { required: true, message: 'Re-enter the password' },
-                      ({ getFieldValue }) => ({
-                        validator(_, value) {
-                          if (!value || getFieldValue('password') === value) {
-                            return Promise.resolve()
-                          }
-                          return Promise.reject(new Error('The passwords do not match'))
-                        },
-                      }),
-                    ]}
-                  >
-                    <Input.Password prefix={<LockOutlined />} autoComplete="new-password" />
-                  </Form.Item>
-
-                  <Button type="primary" htmlType="submit" block loading={submitting}>
-                    Reset password
-                  </Button>
-                </Form>
-              </>
+              <form onSubmit={handleSubmit} noValidate>
+                <h1 className="text-xl font-semibold text-ink">Choose a new password</h1>
+                <p className="mb-5 mt-1 text-sm text-muted">Enter a new password for your account.</p>
+                <div className="space-y-4">
+                  <Field label="New password" required error={errors.password} hint={!errors.password && PASSWORD_HINT}>
+                    <PasswordInput size="lg" autoComplete="new-password" value={values.password} invalid={!!errors.password} onChange={set('password')} />
+                  </Field>
+                  <Field label="Confirm password" required error={errors.confirm}>
+                    <PasswordInput size="lg" autoComplete="new-password" value={values.confirm} invalid={!!errors.confirm} onChange={set('confirm')} />
+                  </Field>
+                </div>
+                <Button type="submit" variant="primary" size="lg" block loading={submitting} className="mt-5">
+                  Reset password
+                </Button>
+              </form>
             )}
           </Card>
-
-          <div style={{ textAlign: 'center', marginTop: 16 }}>
-            <Link to="/login" style={{ color: '#64748b', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <div className="mt-4 text-center">
+            <Link to="/login" className="inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-ink">
               <ArrowLeftOutlined /> Back to sign in
             </Link>
           </div>
-        </div>
-      </div>
-      <PublicFooter />
-    </div>
+    </AuthShell>
   )
 }

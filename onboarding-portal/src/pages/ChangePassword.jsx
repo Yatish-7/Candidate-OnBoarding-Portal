@@ -1,138 +1,101 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { Alert, App as AntApp, Button, Card, Form, Input, Spin, Typography } from 'antd'
-import { ArrowLeftOutlined, LockOutlined } from '@ant-design/icons'
-import Logo from '../components/Logo.jsx'
-import PublicFooter from '../components/PublicFooter.jsx'
+import { ArrowLeftOutlined } from '@ant-design/icons'
+import AuthShell from '../components/AuthShell.jsx'
+import { Alert, Button, Card, Field, FullscreenSpinner, PasswordInput, useToast } from '../ui/index.js'
 import { changePassword } from '../api/auth.js'
 import { useAuth } from '../context/AuthContext.js'
 import { getErrorMessage } from '../utils/errors.js'
-import { PASSWORD_HINT, passwordRules } from '../utils/passwordRules.js'
+import { PASSWORD_HINT, validatePassword } from '../utils/passwordRules.js'
 import { homePathForRole } from '../utils/roles.js'
 
 // "Change password" for a signed-in user. Also the page everyone lands on after their
-// first sign-in (or after an admin set a new password for them): until they choose
-// their own password the backend refuses everything else.
+// first sign-in (until they choose their own password the backend refuses everything else).
 export default function ChangePassword() {
   const { user, loading, refreshUser, logout } = useAuth()
   const navigate = useNavigate()
-  const { message } = AntApp.useApp()
+  const toast = useToast()
+  const [values, setValues] = useState({ currentPassword: '', password: '', confirm: '' })
+  const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
 
-  if (loading) return <Spin fullscreen />
+  if (loading) return <FullscreenSpinner />
   if (!user) return <Navigate to="/login" replace />
 
   const forced = user.mustChangePassword
+  const set = (name) => (e) => setValues((v) => ({ ...v, [name]: e.target.value }))
 
-  async function handleFinish(values) {
+  function validate() {
+    const next = {}
+    if (!values.currentPassword) next.currentPassword = 'Enter your current password'
+    const pw = validatePassword(values.password, 'Enter a new password')
+    if (pw) next.password = pw
+    else if (values.password === values.currentPassword) next.password = 'Choose a different password from the current one'
+    if (!values.confirm) next.confirm = 'Re-enter the new password'
+    else if (values.confirm !== values.password) next.confirm = 'The passwords do not match'
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!validate()) return
     setSubmitting(true)
     try {
       await changePassword(values.currentPassword, values.password)
-      await refreshUser() // picks up mustChangePassword = false
-      message.success('Your password has been changed')
+      await refreshUser()
+      toast.success('Your password has been changed')
       navigate(homePathForRole(user.role), { replace: true })
-    } catch (error) {
-      message.error(getErrorMessage(error, 'Could not change the password'))
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not change the password'))
       setSubmitting(false)
     }
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f7fa' }}>
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ width: '100%', maxWidth: 420 }} className="oi-fade-up">
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-            <Logo height={44} />
-          </div>
-
+    <AuthShell>
           <Card>
-            <Typography.Title level={3} style={{ marginTop: 0, marginBottom: 4 }}>
-              {forced ? 'Choose your own password' : 'Change password'}
-            </Typography.Title>
+            <h1 className="text-xl font-semibold text-ink">{forced ? 'Choose your own password' : 'Change password'}</h1>
             {forced ? (
               <Alert
-                type="info"
-                showIcon
-                style={{ margin: '12px 0 20px' }}
-                message="Your password was set by an administrator."
-                description="For your security, choose a new password that only you know before continuing."
+                tone="info"
+                className="mb-5 mt-3"
+                title="Your password was set by an administrator."
+                message="For your security, choose a new password that only you know before continuing."
               />
             ) : (
-              <Typography.Paragraph type="secondary" style={{ marginBottom: 20 }}>
-                Signed in as {user.email}. Other devices will be signed out.
-              </Typography.Paragraph>
+              <p className="mb-5 mt-1 text-sm text-muted">Signed in as {user.email}. Other devices will be signed out.</p>
             )}
-
-            <Form layout="vertical" onFinish={handleFinish} requiredMark={false} size="large">
-              <Form.Item
-                label={forced ? 'Temporary password' : 'Current password'}
-                name="currentPassword"
-                rules={[{ required: true, message: 'Enter your current password' }]}
-              >
-                <Input.Password prefix={<LockOutlined />} autoComplete="current-password" />
-              </Form.Item>
-
-              <Form.Item
-                label="New password"
-                name="password"
-                dependencies={['currentPassword']}
-                rules={[
-                  ...passwordRules('Enter a new password'),
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (value && value === getFieldValue('currentPassword')) {
-                        return Promise.reject(new Error('Choose a different password from the current one'))
-                      }
-                      return Promise.resolve()
-                    },
-                  }),
-                ]}
-                extra={PASSWORD_HINT}
-                hasFeedback
-              >
-                <Input.Password prefix={<LockOutlined />} autoComplete="new-password" />
-              </Form.Item>
-
-              <Form.Item
-                label="Confirm new password"
-                name="confirm"
-                dependencies={['password']}
-                hasFeedback
-                rules={[
-                  { required: true, message: 'Re-enter the new password' },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value || getFieldValue('password') === value) {
-                        return Promise.resolve()
-                      }
-                      return Promise.reject(new Error('The passwords do not match'))
-                    },
-                  }),
-                ]}
-              >
-                <Input.Password prefix={<LockOutlined />} autoComplete="new-password" />
-              </Form.Item>
-
-              <Button type="primary" htmlType="submit" block loading={submitting}>
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+              <Field label={forced ? 'Temporary password' : 'Current password'} required error={errors.currentPassword}>
+                <PasswordInput size="lg" autoComplete="current-password" value={values.currentPassword} invalid={!!errors.currentPassword} onChange={set('currentPassword')} />
+              </Field>
+              <Field label="New password" required error={errors.password} hint={!errors.password && PASSWORD_HINT}>
+                <PasswordInput size="lg" autoComplete="new-password" value={values.password} invalid={!!errors.password} onChange={set('password')} />
+              </Field>
+              <Field label="Confirm new password" required error={errors.confirm}>
+                <PasswordInput size="lg" autoComplete="new-password" value={values.confirm} invalid={!!errors.confirm} onChange={set('confirm')} />
+              </Field>
+              <Button type="submit" variant="primary" size="lg" block loading={submitting}>
                 Change password
               </Button>
-            </Form>
+            </form>
           </Card>
-
-          <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <div className="mt-4 text-center">
             {forced ? (
-              <Button type="link" onClick={() => logout().then(() => navigate('/login'))} style={{ color: '#64748b' }}>
+              <button
+                type="button"
+                className="text-[13px] text-muted hover:text-ink"
+                onClick={() => logout().then(() => navigate('/login'))}
+              >
                 Sign out instead
-              </Button>
+              </button>
             ) : (
-              <Link to={homePathForRole(user.role)} style={{ color: '#64748b', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Link to={homePathForRole(user.role)} className="inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-ink">
                 <ArrowLeftOutlined /> Back to the portal
               </Link>
             )}
           </div>
-        </div>
-      </div>
-      <PublicFooter />
-    </div>
+    </AuthShell>
   )
 }

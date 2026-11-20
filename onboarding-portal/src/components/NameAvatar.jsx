@@ -1,4 +1,4 @@
-import { Avatar } from 'antd'
+import Avatar from '../ui/Avatar.jsx'
 
 // Soft background + strong text color pairs for avatars
 const COLORS = [
@@ -27,12 +27,9 @@ function getColors(name = '') {
   return COLORS[sum % COLORS.length]
 }
 
-// A round avatar with someone's initials, e.g. in the candidate table and the header
-export default function NameAvatar({ name, size = 'default' }) {
+// A round avatar with someone's initials, e.g. in the candidate table and the header.
+// `size` is a pixel height (default 36).
+export default function NameAvatar({ name, size = 36 }) {
   const [background, color] = getColors(name)
-  return (
-    <Avatar size={size} style={{ background, color, fontWeight: 600, flexShrink: 0 }}>
-      {getInitials(name)}
-    </Avatar>
-  )
+  return <Avatar initials={getInitials(name)} background={background} color={color} size={size} />
 }

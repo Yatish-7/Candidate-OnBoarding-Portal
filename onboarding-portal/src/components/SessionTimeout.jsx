@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Modal, Typography } from 'antd'
 import { ClockCircleOutlined } from '@ant-design/icons'
+import Button from '../ui/Button.jsx'
+import Modal from '../ui/Modal.jsx'
 import { getMe } from '../api/auth.js'
 import { useAuth } from '../context/AuthContext.js'
 import { getIdleTimeoutMs, getLastActivity, markActivity, setSignedOutReason } from '../utils/session.js'
@@ -92,31 +93,32 @@ export default function SessionTimeout() {
   return (
     <Modal
       open={secondsLeft !== null}
-      closable={false}
-      mask={{ closable: false }}
-      keyboard={false}
+      dismissable={false}
+      width={440}
       title={
-        <span>
-          <ClockCircleOutlined style={{ color: '#d97706', marginRight: 8 }} />
+        <span className="flex items-center gap-2">
+          <ClockCircleOutlined className="text-warning" />
           Are you still there?
         </span>
       }
-      footer={[
-        <Button key="out" onClick={signOutNow}>
-          Sign out
-        </Button>,
-        <Button key="stay" type="primary" onClick={staySignedIn}>
-          Stay signed in
-        </Button>,
-      ]}
+      footer={
+        <>
+          <Button variant="default" onClick={signOutNow}>
+            Sign out
+          </Button>
+          <Button variant="primary" onClick={staySignedIn}>
+            Stay signed in
+          </Button>
+        </>
+      }
     >
-      <Typography.Paragraph style={{ marginBottom: 0 }}>
+      <p className="text-sm text-muted">
         For your security you&apos;ll be signed out in{' '}
-        <b>
+        <b className="tabular-nums text-ink">
           {minutes}:{seconds}
         </b>{' '}
         because there&apos;s been no activity.
-      </Typography.Paragraph>
+      </p>
     </Modal>
   )
 }

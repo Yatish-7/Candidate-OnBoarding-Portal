@@ -1,235 +1,216 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Dropdown, Grid, Layout, Menu, Space, Tag, Typography } from 'antd'
 import {
-  KeyOutlined,
   ApartmentOutlined,
   DashboardOutlined,
   DownOutlined,
   HistoryOutlined,
+  KeyOutlined,
   LogoutOutlined,
+  MenuOutlined,
   SettingOutlined,
   TeamOutlined,
   UserAddOutlined,
 } from '@ant-design/icons'
+import Badge from '../ui/Badge.jsx'
+import { cn } from '../ui/cn.js'
 import { useAuth } from '../context/AuthContext.js'
 import { USE_MOCKS } from '../utils/env.js'
 import { CANDIDATE_ROLES, ROLE_LABELS } from '../utils/roles.js'
-import Logo from './Logo.jsx'
+import { BrandBadge } from './BrandMark.jsx'
 import NameAvatar from './NameAvatar.jsx'
 import RoleSwitcher from './RoleSwitcher.jsx'
 import SessionTimeout from './SessionTimeout.jsx'
 
-const { Header, Sider, Content, Footer } = Layout
-
 // Sidebar links. "roles" lists who may see each link; no "roles" means everyone.
 const MENU_ITEMS = [
-  {
-    key: '/admin',
-    icon: <DashboardOutlined />,
-    label: 'Dashboard',
-    roles: ['SUPER_ADMIN'],
-  },
-  {
-    key: '/candidates',
-    icon: <TeamOutlined />,
-    label: 'Candidates',
-    // Admin has no candidate access, so everyone in the workflow but not Admin.
-    roles: CANDIDATE_ROLES,
-  },
-  {
-    key: '/candidates/new',
-    icon: <UserAddOutlined />,
-    label: 'New candidate',
-    roles: ['RECRUITER'],
-  },
-  {
-    key: '/admin/users',
-    icon: <SettingOutlined />,
-    label: 'Users',
-    roles: ['SUPER_ADMIN', 'ADMIN'],
-  },
-  {
-    key: '/admin/teams',
-    icon: <ApartmentOutlined />,
-    label: 'Teams',
-    roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_LEAD', 'SALES_MANAGER'],
-  },
-  {
-    key: '/admin/audit',
-    icon: <HistoryOutlined />,
-    label: 'Audit log',
-    roles: ['SUPER_ADMIN'],
-  },
+  { key: '/admin', icon: <DashboardOutlined />, label: 'Dashboard', roles: ['SUPER_ADMIN'] },
+  { key: '/candidates', icon: <TeamOutlined />, label: 'Candidates', roles: CANDIDATE_ROLES },
+  { key: '/candidates/new', icon: <UserAddOutlined />, label: 'New candidate', roles: ['RECRUITER'] },
+  { key: '/admin/users', icon: <SettingOutlined />, label: 'Users', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { key: '/admin/teams', icon: <ApartmentOutlined />, label: 'Teams', roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_LEAD', 'SALES_MANAGER'] },
+  { key: '/admin/audit', icon: <HistoryOutlined />, label: 'Audit log', roles: ['SUPER_ADMIN'] },
 ]
+
+// The dark navigation panel, shared by the fixed desktop sidebar and the mobile drawer.
+function Sidebar({ items, selectedKey, onNavigate }) {
+  return (
+    <div className="oi-sidebar flex h-full flex-col">
+      {/* Brand lockup: a gradient atom badge + wordmark that reads cleanly on the dark panel */}
+      <div className="mx-5 flex items-center gap-3 border-b border-white/[0.07] pb-5 pt-6">
+        <BrandBadge size={40} />
+        <div className="min-w-0">
+          <div className="text-[16px] font-extrabold leading-none tracking-tight text-white">Intellectt</div>
+          <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Onboarding Portal</div>
+        </div>
+      </div>
+
+      <div className="px-5 pb-2 pt-5">
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">Menu</span>
+      </div>
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
+        {items.map((item) => {
+          const active = item.key === selectedKey
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onNavigate(item.key)}
+              className={cn('oi-nav-link w-full text-left', active ? 'oi-nav-active' : 'oi-nav-idle')}
+            >
+              <span className="oi-nav-ico">{item.icon}</span>
+              {item.label}
+            </button>
+          )
+        })}
+      </nav>
+
+      <div className="mt-auto border-t border-white/[0.07] px-5 py-4">
+        <p className="text-[11px] text-slate-500">© {new Date().getFullYear()} One Intellectt</p>
+      </div>
+    </div>
+  )
+}
 
 export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
-  // Start collapsed on screens narrower than antd's "lg" breakpoint (992px), so phones never
-  // briefly show the open sidebar while the page loads
-  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 992)
-  // Which screen sizes are active right now, e.g. screens.md is true on tablets and up
-  const screens = Grid.useBreakpoint()
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
 
-  // Keep only the links this role may see, and drop "roles" (antd's Menu doesn't know it)
-  const menuItems = MENU_ITEMS.filter((item) => !item.roles || item.roles.includes(user.role)).map(
-    ({ roles: _roles, ...item }) => item,
-  )
+  const menuItems = MENU_ITEMS.filter((item) => !item.roles || item.roles.includes(user.role))
 
-  // Highlight the menu link that best matches the current URL.
-  // We pick the longest match so /candidates/new highlights "New candidate", not "Candidates".
+  // Highlight the link that best matches the current URL (longest match wins, so
+  // /candidates/new highlights "New candidate", not "Candidates").
   const selectedKey =
     menuItems
       .map((item) => item.key)
       .filter((key) => location.pathname.startsWith(key))
       .sort((a, b) => b.length - a.length)[0] ?? ''
 
+  // Close the user menu when clicking elsewhere
+  useEffect(() => {
+    function onClick(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [])
+
+  // Close the mobile drawer whenever the route changes
+  useEffect(() => setDrawerOpen(false), [location.pathname])
+
+  function go(key) {
+    navigate(key)
+  }
+
   async function handleLogout() {
-    await logout() // ends the session on the server too
+    await logout()
     navigate('/login')
   }
 
-  // The menu that opens when you click your name in the header
-  const userMenu = {
-    items: [
-      {
-        key: 'me',
-        disabled: true, // just information, not clickable
-        label: (
-          <div style={{ color: '#0f172a' }}>
-            <div style={{ fontWeight: 600 }}>{user.name}</div>
-            <div style={{ fontSize: 12, color: '#64748b' }}>{user.email}</div>
-          </div>
-        ),
-      },
-      { type: 'divider' },
-      { key: 'password', icon: <KeyOutlined />, label: 'Change password' },
-      { key: 'logout', icon: <LogoutOutlined />, label: 'Log out', danger: true },
-    ],
-    onClick: ({ key }) => {
-      if (key === 'logout') handleLogout()
-      if (key === 'password') navigate('/change-password')
-    },
-  }
-
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      {/* On small screens (below "lg") the sidebar collapses fully, so mobile doesn't break */}
-      <Sider
-        width={240}
-        breakpoint="lg"
-        collapsedWidth={0}
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
-        style={{ boxShadow: '1px 0 0 rgba(15, 23, 42, 0.08)' }}
-        // On small screens the ≡ button that opens the sidebar sits in the header's top-left corner
-        zeroWidthTriggerStyle={{ top: 14, zIndex: 20, borderRadius: 8 }}
-      >
-        {/* overflow: hidden stops the logo and menu from spilling out while the sidebar is collapsed to 0px */}
-        <div style={{ overflow: 'hidden' }}>
-          <div style={{ padding: '20px 16px 18px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: 12 }}>
-            {/* Full-colour logo on a soft light tile so its black wordmark reads on the dark sidebar */}
-            <div
-              style={{
-                background: '#f8fafc',
-                borderRadius: 12,
-                padding: '10px 14px',
-                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.6)',
-              }}
-            >
-              <Logo style={{ height: 'auto', width: '100%', maxWidth: 176, margin: '0 auto' }} />
-            </div>
-            <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 8, paddingLeft: 2 }}>Onboarding Portal</div>
-          </div>
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[selectedKey]}
-            items={menuItems}
-            onClick={({ key }) => navigate(key)}
-          />
+    <div className="flex min-h-screen">
+      {/* Desktop sidebar: fixed column on large screens */}
+      <aside className="hidden w-64 shrink-0 lg:block">
+        <div className="fixed inset-y-0 left-0 w-64 shadow-[10px_0_40px_-20px_rgba(2,6,23,0.45)]">
+          <Sidebar items={menuItems} selectedKey={selectedKey} onNavigate={go} />
         </div>
-      </Sider>
+      </aside>
 
-      <Layout>
-        <Header
-          style={{
-            position: 'sticky', // stays at the top while the page scrolls
-            top: 0,
-            zIndex: 10,
-            height: 'auto', // let the header grow if its items wrap onto two lines on small screens
-            minHeight: 64,
-            lineHeight: 'normal',
-            padding: '8px 24px',
-            // When the sidebar is hidden (small screens), its ≡ button sits at the left edge,
-            // so leave room for it
-            paddingLeft: collapsed ? 64 : 24,
-            borderBottom: '1px solid #e8ecf3',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 12,
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          {/* Left: the dev-only role switcher (mock mode). An empty div keeps the user menu on the right. */}
-          {USE_MOCKS ? (
-            // flex + minWidth: 0 lets this group shrink on narrow screens instead of overflowing
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 200px', minWidth: 0, maxWidth: 360 }}>
-              <Tag color="orange" variant="filled" style={{ margin: 0 }}>
-                MOCK
-              </Tag>
-              <RoleSwitcher />
-            </div>
-          ) : collapsed ? (
-            // When the sidebar is hidden (mobile/collapsed), show the logo in the header
-            <Logo height={28} />
-          ) : (
-            <div />
-          )}
+      {/* Mobile drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" onClick={() => setDrawerOpen(false)} />
+          <div className="oi-pop absolute inset-y-0 left-0 w-64">
+            <Sidebar items={menuItems} selectedKey={selectedKey} onNavigate={go} />
+          </div>
+        </div>
+      )}
 
-          {/* Right: who is logged in, with a menu to log out */}
-          <Dropdown menu={userMenu} trigger={['click']} placement="bottomRight">
-            <Space style={{ cursor: 'pointer' }}>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white/75 px-4 py-2.5 backdrop-blur-xl sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="grid size-9 shrink-0 place-items-center rounded-lg border border-line text-ink transition-colors hover:border-brand hover:text-brand lg:hidden"
+              aria-label="Open menu"
+            >
+              <MenuOutlined />
+            </button>
+            {/* Left side stays empty on normal pages; only the dev role switcher appears in mock mode */}
+            {USE_MOCKS && (
+              <div className="flex min-w-0 max-w-sm flex-1 items-center gap-2">
+                <Badge tone="warning">MOCK</Badge>
+                <RoleSwitcher />
+              </div>
+            )}
+          </div>
+
+          {/* User menu */}
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-black/5"
+            >
               <NameAvatar name={user.name} />
-              {screens.md && (
-                <div style={{ lineHeight: 1.25 }}>
-                  <Typography.Text strong>{user.name}</Typography.Text>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>
-                    {ROLE_LABELS[user.role]}
-                    {user.teamName && ` · ${user.teamName}`}
-                  </div>
+              <div className="hidden text-left leading-tight sm:block">
+                <div className="text-sm font-semibold text-ink">{user.name}</div>
+                <div className="text-xs text-muted">
+                  {ROLE_LABELS[user.role]}
+                  {user.teamName && ` · ${user.teamName}`}
                 </div>
-              )}
-              <DownOutlined style={{ fontSize: 10, color: '#94a3b8' }} />
-            </Space>
-          </Dropdown>
-        </Header>
+              </div>
+              <DownOutlined className="text-[10px] text-faint" />
+            </button>
+            {menuOpen && (
+              <div className="oi-pop absolute right-0 top-full z-40 mt-2 w-60 overflow-hidden rounded-xl border border-line bg-white shadow-xl">
+                <div className="border-b border-line px-4 py-3">
+                  <div className="font-semibold text-ink">{user.name}</div>
+                  <div className="truncate text-xs text-muted">{user.email}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    navigate('/change-password')
+                  }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-ink transition-colors hover:bg-slate-50"
+                >
+                  <KeyOutlined className="text-faint" />
+                  Change password
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-danger transition-colors hover:bg-danger-soft"
+                >
+                  <LogoutOutlined />
+                  Log out
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
 
-        <Content style={{ padding: screens.md ? 24 : 16 }}>
-          {/* Keep pages from getting too wide on very large screens */}
-          <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-            {/* <Outlet /> is where the current page (from App.jsx) is drawn */}
-            <Outlet />
-            {/* Signs out after inactivity, with a "still there?" warning first */}
+        <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6">
+          <div className="mx-auto max-w-[1400px]">
+            {/* key by route so each page eases in on navigation */}
+            <div key={location.pathname} className="oi-page">
+              <Outlet />
+            </div>
             <SessionTimeout />
           </div>
-        </Content>
+        </main>
 
-        <Footer
-          style={{
-            textAlign: 'center',
-            background: 'transparent',
-            color: '#94a3b8',
-            fontSize: 13,
-            padding: '16px 24px 24px',
-          }}
-        >
+        <footer className="px-6 pb-6 pt-2 text-center text-[13px] text-faint">
           © {new Date().getFullYear()} One Intellectt · Candidate Onboarding Portal
-        </Footer>
-      </Layout>
-    </Layout>
+        </footer>
+      </div>
+    </div>
   )
 }

@@ -1,6 +1,8 @@
-import { Space, Steps, Tag } from 'antd'
+import Steps from '../ui/Steps.jsx'
+import Badge from '../ui/Badge.jsx'
 import { formatDate } from '../utils/format.js'
 import { WORKFLOW } from '../utils/status.js'
+import { tagColor } from '../utils/colors.js'
 
 // How each stage status looks as a small tag
 const STAGE_TAGS = {
@@ -11,7 +13,7 @@ const STAGE_TAGS = {
   SET: { label: 'Set', color: 'green' },
 }
 
-// antd Steps colors each step by a "status": wait (grey), process (blue), finish (green), error (red)
+// Steps colors each step by a status: wait (grey), process (blue), finish (green), error (red)
 const STEP_STATUS = {
   NOT_STARTED: 'wait',
   PENDING: 'process',
@@ -32,15 +34,13 @@ export default function StageProgress({ candidate }) {
       title: step.label,
       status: STEP_STATUS[value],
       content: (
-        <Space orientation="vertical" size={2}>
-          <Tag color={tag.color}>{tag.label}</Tag>
+        <span className="flex flex-col items-start gap-1">
+          <Badge color={tagColor(tag.color)}>{tag.label}</Badge>
           {step.key === 'doj' && dojDate && <span>{formatDate(dojDate)}</span>}
-        </Space>
+        </span>
       ),
     }
   })
 
-  // titlePlacement="vertical" puts each title under its icon, so 7 steps fit side by side.
-  // On narrow screens antd stacks them vertically by itself.
-  return <Steps size="small" titlePlacement="vertical" items={items} />
+  return <Steps items={items} />
 }

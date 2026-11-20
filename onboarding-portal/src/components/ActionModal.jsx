@@ -1,12 +1,17 @@
 import { useState } from 'react'
-import { App as AntApp, Form, Input, Modal } from 'antd'
-import { getErrorMessage, showFieldErrors } from '../utils/errors.js'
+import Modal from '../ui/Modal.jsx'
+import Button from '../ui/Button.jsx'
+import Field from '../ui/Field.jsx'
+import { Textarea } from '../ui/Input.jsx'
+import { useToast } from '../ui/feedback.jsx'
+import { fieldErrorMap, getErrorMessage } from '../utils/errors.js'
 
 // One pop-up used by every workflow action (approve, decline, raise DOJ, override).
 //   commentRequired → the comment box must be filled in, or OK is blocked (decline, override)
 //   hideComment     → no comment box at all (raise DOJ)
-//   children        → extra fields or warnings shown above the comment box
-//   onSubmit(values) → does the API call; the modal shows a spinner meanwhile and any error after
+//   children        → a render function (form) => fields, where form = { values, set, errors }
+//   validate(values)→ optional, returns a { field: message } map for the custom fields
+//   onSubmit(values)→ does the API call; the modal shows a spinner meanwhile and any error after
 export default function ActionModal({
   title,
   okText,
@@ -14,32 +19,35 @@ export default function ActionModal({
   commentRequired = false,
   hideComment = false,
   initialValues,
+  validate,
   children,
   onCancel,
   onSubmit,
 }) {
-  const [form] = Form.useForm()
+  const [values, setValues] = useState({ comment: '', ...initialValues })
+  const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
-  const { message } = AntApp.useApp()
+  const toast = useToast()
+
+  function set(name, value) {
+    setValues((v) => ({ ...v, [name]: value }))
+    setErrors((e) => ({ ...e, [name]: undefined }))
+  }
+  const form = { values, set, errors }
 
   async function handleOk() {
-    let values
-    try {
-      // Checks every field's rules. If something is wrong, antd shows it under the field.
-      values = await form.validateFields()
-    } catch {
-      return
-    }
+    const found = validate ? validate(values) : {}
+    if (commentRequired && !String(values.comment ?? '').trim()) found.comment = 'Please add a comment explaining why'
+    setErrors(found)
+    if (Object.values(found).some(Boolean)) return
 
     setSaving(true)
     try {
       await onSubmit(values)
     } catch (error) {
-      // Errors about a specific field go under that field; anything else as a pop-up message
-      if (!showFieldErrors(form, error)) {
-        message.error(getErrorMessage(error))
-      }
-    } finally {
+      const map = fieldErrorMap(error)
+      if (map) setErrors(map)
+      else toast.error(getErrorMessage(error))
       setSaving(false)
     }
   }
@@ -47,29 +55,33 @@ export default function ActionModal({
   return (
     <Modal
       open
+      onClose={onCancel}
       title={title}
-      okText={okText}
-      okButtonProps={{ danger }}
-      confirmLoading={saving}
-      onOk={handleOk}
-      onCancel={onCancel}
+      footer={
+        <>
+          <Button variant="default" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant={danger ? 'danger' : 'primary'} loading={saving} onClick={handleOk}>
+            {okText}
+          </Button>
+        </>
+      }
     >
-      <Form form={form} layout="vertical" initialValues={initialValues}>
-        {children}
+      <div className="space-y-4">
+        {typeof children === 'function' ? children(form) : children}
         {!hideComment && (
-          <Form.Item
-            name="comment"
-            label={commentRequired ? 'Comment (required)' : 'Comment (optional)'}
-            rules={
-              commentRequired
-                ? [{ required: true, whitespace: true, message: 'Please add a comment explaining why' }]
-                : []
-            }
-          >
-            <Input.TextArea rows={3} maxLength={1000} showCount />
-          </Form.Item>
+          <Field label={commentRequired ? 'Comment (required)' : 'Comment (optional)'} required={commentRequired} error={errors.comment}>
+            <Textarea
+              rows={3}
+              maxLength={1000}
+              value={values.comment ?? ''}
+              invalid={!!errors.comment}
+              onChange={(e) => set('comment', e.target.value)}
+            />
+          </Field>
         )}
-      </Form>
+      </div>
     </Modal>
   )
 }

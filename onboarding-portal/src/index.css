@@ -1,4 +1,38 @@
-/* antd styles itself (see src/theme.js); these are a few global polish touches. */
+@import 'tailwindcss';
+
+/* ============================================================
+   Design tokens — the whole app's palette in one place.
+   Tailwind turns these into utilities: bg-brand, text-ink, border-line, …
+   ============================================================ */
+@theme {
+  --color-brand: #6366f1; /* indigo-500 — primary accent */
+  --color-brand-hover: #4f46e5; /* indigo-600 */
+  --color-brand-active: #4338ca; /* indigo-700 */
+  --color-brand-soft: #eef2ff; /* light indigo wash */
+  --color-accent: #8b5cf6; /* violet — used in gradients */
+  --color-ink: #0f172a; /* slate-900 — headings */
+  --color-sidebar: #0b1020; /* deep navy sidebar base */
+  --color-success: #16a34a;
+  --color-success-soft: #f0fdf4;
+  --color-warning: #d97706;
+  --color-warning-soft: #fffbeb;
+  --color-danger: #e11d48;
+  --color-danger-soft: #fef2f2;
+  --color-muted: #64748b; /* secondary text */
+  --color-faint: #94a3b8; /* tertiary text */
+  --color-line: #e9edf4; /* soft borders */
+  --color-surface: #f4f6fb; /* page background */
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px -8px rgba(16, 24, 40, 0.1);
+  --shadow-lift: 0 16px 40px -14px rgba(16, 24, 40, 0.22), 0 4px 10px -6px rgba(16, 24, 40, 0.1);
+  --shadow-brand: 0 10px 24px -8px rgba(99, 102, 241, 0.5);
+}
+
+/* Base element styles go in @layer base so Tailwind utilities (e.g. text-white on a
+   button-link) always win over them. */
+@layer base {
 html,
 body,
 #root {
@@ -7,17 +41,126 @@ body,
 }
 
 body {
+  background:
+    radial-gradient(1200px 600px at 100% -10%, rgba(139, 92, 246, 0.07), transparent 60%),
+    radial-gradient(900px 500px at -10% 0%, rgba(99, 102, 241, 0.06), transparent 55%),
+    var(--color-surface);
+  background-attachment: fixed;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  letter-spacing: -0.01em;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+input,
+button,
+select,
+textarea {
+  font-family: inherit;
+}
+
+a {
+  color: var(--color-brand);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+a:hover {
+  color: var(--color-brand-hover);
+}
+
+/* Thin, unobtrusive scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+  background-clip: padding-box;
+}
+}
+/* end @layer base */
+
+/* ============================================================
+   Sidebar navigation — premium dark panel
+   ============================================================ */
+/* A calm, near-flat dark panel with only a whisper of brand tint at the top. */
+.oi-sidebar {
+  background:
+    radial-gradient(620px 300px at 50% -14%, rgba(99, 102, 241, 0.1), transparent 62%),
+    linear-gradient(180deg, #0c1122 0%, #0a0e1b 100%);
+}
+
+/* Clean nav rows: plain icon + label, a soft fill on hover, a subtle fill plus a slim
+   gradient accent bar when active — no glow, no chips. */
+.oi-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  border-radius: 0.6rem;
+  padding: 0.58rem 0.7rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #94a3b8;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+.oi-nav-ico {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3rem;
+  font-size: 1.05rem;
+  color: #64748b;
+  transition: color 0.18s ease;
+}
+.oi-nav-idle:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+}
+.oi-nav-idle:hover .oi-nav-ico {
+  color: #cbd5e1;
+}
+.oi-nav-active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.oi-nav-active .oi-nav-ico {
+  color: #a5b4fc; /* indigo-300 accent, legible on dark */
+}
+.oi-nav-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 1.3rem;
+  width: 3px;
+  transform: translateY(-50%);
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--color-brand), var(--color-accent));
 }
 
 /* ============================================================
-   Keyframes
+   Keyframes + entrance helpers
    ============================================================ */
 @keyframes oi-spin {
-  from {
-    transform: rotate(0deg);
-  }
   to {
     transform: rotate(360deg);
   }
@@ -35,7 +178,7 @@ body {
 @keyframes oi-pop {
   from {
     opacity: 0;
-    transform: scale(0.9);
+    transform: scale(0.96);
   }
   to {
     opacity: 1;
@@ -62,13 +205,22 @@ body {
     transform: scale(1.07);
   }
 }
+@keyframes oi-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 
-/* Entrance helpers (one-shot) */
 .oi-fade-up {
-  animation: oi-fade-up 0.6s ease both;
+  animation: oi-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .oi-pop {
-  animation: oi-pop 0.5s ease both;
+  animation: oi-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .oi-delay-1 {
   animation-delay: 0.08s;
@@ -81,6 +233,44 @@ body {
 }
 .oi-delay-4 {
   animation-delay: 0.32s;
+}
+.oi-spin {
+  animation: oi-spin 0.7s linear infinite;
+}
+.oi-toast-in {
+  animation: oi-toast-in 0.25s ease both;
+}
+
+/* Page transition: content eases in on every route change */
+@keyframes oi-page {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.oi-page {
+  animation: oi-page 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* A word or phrase painted in the brand gradient */
+.oi-gradient-text {
+  background: linear-gradient(120deg, var(--color-brand), var(--color-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Soft floating decorative orb (public pages) */
+.oi-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(42px);
+  animation: oi-float 7s ease-in-out infinite;
+  pointer-events: none;
 }
 
 /* Animated atom logo: each orbit ring spins on its own */
@@ -107,13 +297,11 @@ body {
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(900px 440px at 14% -5%, rgba(43, 76, 155, 0.1), transparent 60%),
-    radial-gradient(760px 440px at 88% 8%, rgba(28, 159, 217, 0.08), transparent 60%),
-    radial-gradient(720px 520px at 72% 108%, rgba(225, 53, 42, 0.06), transparent 60%),
-    #f7f9fc;
+    radial-gradient(900px 440px at 14% -5%, rgba(99, 102, 241, 0.14), transparent 60%),
+    radial-gradient(760px 440px at 88% 8%, rgba(139, 92, 246, 0.12), transparent 60%),
+    radial-gradient(720px 520px at 72% 108%, rgba(236, 72, 153, 0.05), transparent 60%),
+    #f8f8fe;
 }
-
-/* Hero logo: a soft, slowly pulsing glow behind a gently floating company logo */
 .oi-logo-stage {
   position: relative;
   display: inline-flex;
@@ -127,8 +315,8 @@ body {
   border-radius: 50%;
   background: radial-gradient(
     closest-side,
-    rgba(43, 76, 155, 0.2),
-    rgba(225, 53, 42, 0.1) 55%,
+    rgba(99, 102, 241, 0.24),
+    rgba(139, 92, 246, 0.14) 55%,
     transparent 76%
   );
   filter: blur(16px);
@@ -139,107 +327,6 @@ body {
   animation: oi-float 5.5s ease-in-out infinite;
 }
 
-/* Landing feature cards */
-.oi-feature {
-  flex: 1 1 240px;
-  max-width: 280px;
-  text-align: left;
-  background: #ffffff;
-  border: 1px solid #e8edf3;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-  transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease,
-    border-color 0.22s ease;
-}
-.oi-feature:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
-  border-color: #bfdbfe;
-}
-.oi-feature-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  background: #dbeafe;
-  color: #1d4ed8;
-  font-size: 20px;
-  margin-bottom: 12px;
-}
-
-/* ============================================================
-   Cards: soft shadow at rest, a gentle lift on hover
-   ============================================================ */
-.ant-card {
-  border-radius: 14px;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 1px 3px rgba(15, 23, 42, 0.06);
-  transition:
-    box-shadow 0.22s ease,
-    transform 0.22s ease,
-    border-color 0.22s ease;
-}
-.ant-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 12px 28px rgba(15, 23, 42, 0.1),
-    0 2px 6px rgba(15, 23, 42, 0.05);
-}
-
-/* Buttons: subtle lift + press feedback */
-.ant-btn {
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease,
-    border-color 0.2s ease;
-}
-.ant-btn:not(.ant-btn-text):not(.ant-btn-link):hover {
-  transform: translateY(-1px);
-}
-.ant-btn:active {
-  transform: translateY(0);
-}
-
-/* Tables: smooth row hover; clickable rows get a pointer */
-.ant-table-tbody > tr > td {
-  transition: background 0.15s ease;
-}
-.clickable-row {
-  cursor: pointer;
-}
-/* Audit log drawer: fields that changed in this revision */
-.oi-audit-changed > td {
-  background: #fffbeb !important;
-  font-weight: 500;
-}
-
-/* Sidebar menu: nudge items right on hover */
-.ant-menu-item {
-  transition:
-    background 0.18s ease,
-    color 0.18s ease,
-    padding-inline 0.18s ease;
-}
-.ant-menu-inline .ant-menu-item:hover {
-  padding-inline-start: 28px !important;
-}
-
-/* Links */
-a {
-  transition: color 0.15s ease;
-}
-
-/* Dashboard statistic cards lift a touch */
-.ant-statistic {
-  transition: transform 0.2s ease;
-}
-
 /* Respect users who prefer less motion */
 @media (prefers-reduced-motion: reduce) {
   .oi-atom,
@@ -247,12 +334,13 @@ a {
   .oi-fade-up,
   .oi-pop,
   .oi-logo-float,
-  .oi-logo-glow {
+  .oi-logo-glow,
+  .oi-toast-in,
+  .oi-page,
+  .oi-orb {
     animation: none !important;
   }
-  .ant-card:hover,
-  .ant-btn:hover,
-  .oi-feature:hover {
+  .oi-nav-idle:hover {
     transform: none;
   }
 }

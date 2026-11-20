@@ -1,20 +1,21 @@
 import { useEffect, useState } from 'react'
-import { App as AntApp, Button, Card, Input, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd'
 import { DeleteOutlined, EditOutlined, FilterOutlined, StopOutlined, UndoOutlined, UserAddOutlined } from '@ant-design/icons'
 import { deleteUserPermanently, getTeams, getUsers, updateUser } from '../api/users.js'
 import NameAvatar from '../components/NameAvatar.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import UserFormModal from '../components/UserFormModal.jsx'
+import { Badge, Button, Card, Input, Select, Table, Pagination, Tooltip, useConfirm, useToast } from '../ui/index.js'
 import { useAuth } from '../context/AuthContext.js'
 import { getErrorMessage } from '../utils/errors.js'
 import { formatDateTime, formatRelative } from '../utils/format.js'
 import { ROLE_LABELS, ROLE_OPTIONS } from '../utils/roles.js'
+import { tagColor } from '../utils/colors.js'
 
 // A color per role tag, so roles are easy to tell apart in the table
 const ROLE_COLORS = {
   RECRUITER: 'blue',
   SALES_LEAD: 'geekblue',
-  SALES_MANAGER: 'lime',
+  SALES_MANAGER: 'green',
   HR: 'cyan',
   CONTRACTS: 'purple',
   PAYROLL: 'gold',
@@ -23,108 +24,110 @@ const ROLE_COLORS = {
   SUPER_ADMIN: 'magenta',
 }
 
-// Super Admin / Admin: everyone who can use the portal. Add people, edit their name,
-// role or team, deactivate/reactivate them, or permanently delete them. (An Admin can
-// manage every role except Super Admin.)
 export default function UserManagement() {
   const { user: currentUser } = useAuth()
-  const { message } = AntApp.useApp()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [users, setUsers] = useState([])
   const [teams, setTeams] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState(null)
-  // null = no pop-up, 'new' = adding a user, or the user object being edited
+  const [roleFilter, setRoleFilter] = useState(undefined)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
   const [editing, setEditing] = useState(null)
 
-  // Load users and teams once when the page opens
   useEffect(() => {
     Promise.all([getUsers(), getTeams()])
       .then(([usersData, teamsData]) => {
         setUsers(usersData)
         setTeams(teamsData)
       })
-      .catch((error) => message.error(getErrorMessage(error, 'Could not load users')))
+      .catch((error) => toast.error(getErrorMessage(error, 'Could not load users')))
       .finally(() => setLoading(false))
-  }, [message])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  // Put a saved user into the list (replace it if it's already there, otherwise add it)
   function upsertUser(saved) {
     setUsers((previous) =>
-      previous.some((u) => u.id === saved.id)
-        ? previous.map((u) => (u.id === saved.id ? saved : u))
-        : [...previous, saved],
+      previous.some((u) => u.id === saved.id) ? previous.map((u) => (u.id === saved.id ? saved : u)) : [...previous, saved],
     )
   }
 
   async function removeUser(user) {
+    const ok = await confirm({
+      title: `Permanently delete ${user.name}?`,
+      description: "This can't be undone. (Blocked if they've submitted candidates — deactivate instead.)",
+      confirmText: 'Delete',
+      danger: true,
+    })
+    if (!ok) return
     try {
       await deleteUserPermanently(user.id)
       setUsers((previous) => previous.filter((u) => u.id !== user.id))
-      message.success(`${user.name} permanently deleted`)
+      toast.success(`${user.name} permanently deleted`)
     } catch (error) {
-      const fieldMessage = error.response?.data?.message
-      message.error(fieldMessage ?? getErrorMessage(error, 'Could not delete the user'))
+      toast.error(error.response?.data?.message ?? getErrorMessage(error, 'Could not delete the user'))
     }
   }
 
   async function toggleActive(user) {
+    const ok = await confirm({
+      title: user.active ? `Deactivate ${user.name}?` : `Activate ${user.name}?`,
+      description: user.active ? "They won't be able to sign in." : 'They will be able to sign in again.',
+      confirmText: user.active ? 'Deactivate' : 'Activate',
+      danger: user.active,
+    })
+    if (!ok) return
     try {
       const saved = await updateUser(user.id, { ...user, active: !user.active })
       upsertUser(saved)
-      message.success(saved.active ? `${saved.name} can sign in again` : `${saved.name} deactivated`)
+      toast.success(saved.active ? `${saved.name} can sign in again` : `${saved.name} deactivated`)
     } catch (error) {
-      // e.g. re-activating a second Sales Lead for the same team
-      const fieldMessage = error.response?.data?.errors?.[0]?.message
-      message.error(fieldMessage ?? getErrorMessage(error, 'Could not update the user'))
+      toast.error(error.response?.data?.errors?.[0]?.message ?? getErrorMessage(error, 'Could not update the user'))
     }
   }
 
-  // Search and role filter happen here in the browser (the list is small)
   const term = search.trim().toLowerCase()
   const shownUsers = users.filter(
     (u) =>
       (!roleFilter || u.role === roleFilter) &&
       (!term || u.name.toLowerCase().includes(term) || u.email.toLowerCase().includes(term)),
   )
+  const pageUsers = shownUsers.slice(page * pageSize, (page + 1) * pageSize)
 
   const columns = [
     {
       title: 'User',
       dataIndex: 'name',
       render: (name, user) => (
-        <Space>
+        <div className="flex items-center gap-3">
           <NameAvatar name={name} />
-          <div style={{ lineHeight: 1.3 }}>
-            <Typography.Text strong>{name}</Typography.Text>
-            {user.id === currentUser.id && <Tag style={{ marginLeft: 8 }}>You</Tag>}
-            <div style={{ fontSize: 12, color: '#64748b' }}>{user.email}</div>
+          <div className="leading-tight">
+            <span className="font-semibold text-ink">{name}</span>
+            {user.id === currentUser.id && <Badge tone="neutral" className="ml-2">You</Badge>}
+            <div className="text-xs text-muted">{user.email}</div>
           </div>
-        </Space>
+        </div>
       ),
     },
-    {
-      title: 'Role',
-      dataIndex: 'role',
-      render: (role) => <Tag color={ROLE_COLORS[role]}>{ROLE_LABELS[role]}</Tag>,
-    },
+    { title: 'Role', dataIndex: 'role', render: (role) => <Badge color={tagColor(ROLE_COLORS[role])}>{ROLE_LABELS[role]}</Badge> },
     { title: 'Team', dataIndex: 'teamName', render: (teamName) => teamName ?? '—' },
     { title: 'Location', dataIndex: 'location', render: (location) => location ?? '—' },
     {
       title: 'Status',
       dataIndex: 'active',
       render: (active, user) => (
-        <Space size={4} wrap>
-          {active ? <Tag color="green">Active</Tag> : <Tag>Deactivated</Tag>}
-          {active && user.mustChangePassword && <Tag color="gold">Temporary password</Tag>}
-        </Space>
+        <div className="flex flex-wrap gap-1">
+          {active ? <Badge tone="success">Active</Badge> : <Badge tone="neutral">Deactivated</Badge>}
+          {active && user.mustChangePassword && <Badge tone="warning">Temporary password</Badge>}
+        </div>
       ),
     },
     {
-      // For access reviews: accounts nobody has used in a long time should be deactivated
       title: 'Last sign-in',
       dataIndex: 'lastLoginAt',
-      render: (at) => (at ? <span title={formatDateTime(at)}>{formatRelative(at)}</span> : 'Never'),
+      render: (at) => (at ? <Tooltip title={formatDateTime(at)}><span className="text-muted">{formatRelative(at)}</span></Tooltip> : <span className="text-muted">Never</span>),
     },
     {
       title: '',
@@ -132,51 +135,24 @@ export default function UserManagement() {
       align: 'right',
       render: (_, user) => {
         const isSelf = user.id === currentUser.id
-        // An Admin manages every role except Super Admin; a Super Admin manages all.
-        const canManageRow =
-          currentUser.role === 'SUPER_ADMIN' ||
-          (currentUser.role === 'ADMIN' && user.role !== 'SUPER_ADMIN')
-        if (!canManageRow) {
-          return <Typography.Text type="secondary">—</Typography.Text>
-        }
+        const canManageRow = currentUser.role === 'SUPER_ADMIN' || (currentUser.role === 'ADMIN' && user.role !== 'SUPER_ADMIN')
+        if (!canManageRow) return <span className="text-muted">—</span>
         return (
-          <Space>
-            <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(user)}>
+          <div className="flex justify-end gap-2">
+            <Button size="sm" icon={<EditOutlined />} onClick={() => setEditing(user)}>
               Edit
             </Button>
-            {/* Popconfirm asks "are you sure?" before doing it. You can't deactivate yourself. */}
             {!isSelf && (
-              <Popconfirm
-                title={user.active ? `Deactivate ${user.name}?` : `Activate ${user.name}?`}
-                description={user.active ? "They won't be able to sign in." : 'They will be able to sign in again.'}
-                okText={user.active ? 'Deactivate' : 'Activate'}
-                okButtonProps={{ danger: user.active }}
-                onConfirm={() => toggleActive(user)}
-              >
-                <Button
-                  size="small"
-                  danger={user.active}
-                  icon={user.active ? <StopOutlined /> : <UndoOutlined />}
-                >
-                  {user.active ? 'Deactivate' : 'Activate'}
-                </Button>
-              </Popconfirm>
+              <Button size="sm" variant={user.active ? 'danger-ghost' : 'default'} icon={user.active ? <StopOutlined /> : <UndoOutlined />} onClick={() => toggleActive(user)}>
+                {user.active ? 'Deactivate' : 'Activate'}
+              </Button>
             )}
-            {/* Permanent delete — Super Admin / Admin. The backend blocks it if they submitted candidates. */}
             {!isSelf && (
-              <Popconfirm
-                title={`Permanently delete ${user.name}?`}
-                description="This can't be undone. (Blocked if they've submitted candidates — deactivate instead.)"
-                okText="Delete"
-                okButtonProps={{ danger: true }}
-                onConfirm={() => removeUser(user)}
-              >
-                <Button size="small" danger icon={<DeleteOutlined />}>
-                  Delete
-                </Button>
-              </Popconfirm>
+              <Button size="sm" variant="danger-ghost" icon={<DeleteOutlined />} onClick={() => removeUser(user)}>
+                Delete
+              </Button>
             )}
-          </Space>
+          </div>
         )
       },
     },
@@ -188,37 +164,49 @@ export default function UserManagement() {
         title="Users"
         subtitle="Everyone who can sign in to the portal, their role and team."
         extra={
-          <Button type="primary" icon={<UserAddOutlined />} onClick={() => setEditing('new')}>
+          <Button variant="primary" icon={<UserAddOutlined />} onClick={() => setEditing('new')}>
             Add user
           </Button>
         }
       />
 
       <Card>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-          <Input.Search
+        <div className="mb-4 flex flex-wrap gap-3">
+          <Input
+            className="max-w-sm flex-1"
             placeholder="Search name or email"
-            allowClear
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: '1 1 240px', maxWidth: 340 }}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(0)
+            }}
           />
           <Select
+            className="w-full sm:w-56"
             placeholder="All roles"
-            prefix={<FilterOutlined style={{ color: '#94a3b8' }} />}
             allowClear
             options={ROLE_OPTIONS}
-            onChange={(value) => setRoleFilter(value ?? null)}
-            style={{ flex: '1 1 200px', maxWidth: 240 }}
+            value={roleFilter}
+            onChange={(value) => {
+              setRoleFilter(value)
+              setPage(0)
+            }}
           />
+          <span className="hidden items-center text-faint sm:flex">
+            <FilterOutlined />
+          </span>
         </div>
 
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={shownUsers}
-          loading={loading}
-          scroll={{ x: 'max-content' }}
-          pagination={{ pageSize: 10, showTotal: (total) => `${total} users` }}
+        <Table columns={columns} data={pageUsers} loading={loading} empty="No users match." />
+        <Pagination
+          current={page}
+          pageSize={pageSize}
+          total={shownUsers.length}
+          label="users"
+          onChange={(p, size) => {
+            setPage(p)
+            setPageSize(size)
+          }}
         />
       </Card>
 

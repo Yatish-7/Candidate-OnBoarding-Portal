@@ -1,7 +1,7 @@
 # One Intellectt — Frontend
 
 The web app for **One Intellectt**, the candidate onboarding & approval portal. It's
-built with React 19, Vite 8 and Ant Design 6, and talks to the Spring Boot backend in
+built with React 19, Vite 8 and Tailwind CSS, and talks to the Spring Boot backend in
 [`../OneIntellectt`](../OneIntellectt).
 
 **Workflow:** Recruiter submits → Sales Lead **or** Sales Manager approves (or declines) → HR and Contracts
@@ -86,7 +86,8 @@ src/
   utils/        status rules, permissions (which buttons show), roles, options,
                 formatting, password rules, session timer
   mocks/        legacy fake backend (dormant)
-  theme.js      Ant Design theme (graphite + blue, dark sidebar)
+  ui/           Tailwind UI kit (buttons, inputs, table, modal, toast, confirm)
+  index.css     Tailwind + design tokens (indigo/violet brand, dark sidebar)
   App.jsx       routes and which roles may open each page
   main.jsx      app start-up
 ```
@@ -100,5 +101,5 @@ src/
   `CandidateQueries.statusKey` in the backend, which drives the status filter and the dashboard counters.
 - **Placement Entity** options (`src/utils/options.js`) must match the backend's
   `app.entity-mail.domains.*` keys, since they decide where emails go.
-- **"Some chunks are larger than 500 kB"** during the build is just a warning (Ant Design is large).
+- **"Some chunks are larger than 500 kB"** during the build is just a warning about the app bundle size.
 - In development, every request shows twice in the Network tab (React StrictMode). The production build doesn't do this.

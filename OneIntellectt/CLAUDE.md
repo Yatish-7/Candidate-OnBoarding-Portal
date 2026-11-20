@@ -17,7 +17,7 @@ Two sibling folders, one system:
 | Part | Folder | What it is |
 |---|---|---|
 | **Backend** (this folder) | `D:\Intellectt\OneIntellectt` | Java 17 + Spring Boot 4.1.1 REST API + PostgreSQL 16. **Source of truth** for rules and data. |
-| **Frontend** | `D:\Intellectt\onboarding-portal` | React 19 + Vite 8 + Ant Design 6 SPA. Has its own `CLAUDE.md` for UI conventions. |
+| **Frontend** | `D:\Intellectt\onboarding-portal` | React 19 + Vite 8 + Tailwind CSS SPA (hand-built `src/ui/` kit, no component library). Has its own `CLAUDE.md` for UI conventions. |
 
 ```
 Browser ──(axios, Bearer JWT)──► Spring Boot API :5000 ──(JPA/Hibernate, HikariCP, pool 5 by default via DB_POOL_SIZE)──► PostgreSQL "Intellectt" :5432

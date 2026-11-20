@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import dayjs from 'dayjs'
-import { Button, Card, DatePicker, Select, Space, Typography } from 'antd'
 import { ClearOutlined } from '@ant-design/icons'
+import Button from '../ui/Button.jsx'
+import Card from '../ui/Card.jsx'
+import Select from '../ui/Select.jsx'
+import { Input } from '../ui/Input.jsx'
 import { getTeams, getUsersByRole } from '../api/users.js'
 import {
   EMPLOYMENT_TYPE_OPTIONS,
@@ -52,15 +55,15 @@ const PRESET_OPTIONS = [
 
 const asOptions = (items) => items.map((item) => ({ value: item.id, label: item.name }))
 
-// The Super Admin's filter bar: date (any of four dates, a quick range or custom dates), recruiter, team and
-// intake fields. "filters" is what the parent sends to the backend; every change calls onChange with a new object.
+// The Super Admin's filter bar: date (any of four dates, a quick range or custom dates), recruiter,
+// team and intake fields. "filters" is what the parent sends to the backend; every change calls
+// onChange with a new object.
 export default function CandidateFilters({ filters, onChange }) {
   const [recruiters, setRecruiters] = useState([])
   const [teams, setTeams] = useState([])
   const [preset, setPreset] = useState(undefined)
 
   useEffect(() => {
-    // The pickers are a nicety: if a list can't load, the other filters still work
     getUsersByRole('RECRUITER').then((users) => setRecruiters(users.map((u) => ({ id: u.id, name: u.name })))).catch(() => {})
     getTeams().then(setTeams).catch(() => {})
   }, [])
@@ -69,62 +72,49 @@ export default function CandidateFilters({ filters, onChange }) {
     onChange({ ...filters, ...changes })
   }
 
-  function setRange(from, to) {
-    set({ from: from ? from.format('YYYY-MM-DD') : undefined, to: to ? to.format('YYYY-MM-DD') : undefined })
-  }
-
   function choosePreset(key) {
     setPreset(key)
     const range = presetRange(key)
-    if (range) setRange(range[0], range[1])
-    else setRange(null, null)
+    if (range) set({ from: range[0].format('YYYY-MM-DD'), to: range[1].format('YYYY-MM-DD') })
+    else set({ from: undefined, to: undefined })
   }
 
   const hasFilter = Object.values(filters).some((v) => v !== undefined && v !== '')
-  const select = (key, placeholder, options, width = 170) => (
-    <Select
-      allowClear
-      showSearch={{ optionFilterProp: 'label' }}
-      placeholder={placeholder}
-      options={options}
-      value={filters[key]}
-      onChange={(value) => set({ [key]: value })}
-      style={{ width }}
-    />
+
+  const pick = (k, placeholder, options) => (
+    <Select allowClear placeholder={placeholder} options={options} value={filters[k]} onChange={(value) => set({ [k]: value })} />
   )
 
   return (
-    <Card size="small" style={{ marginBottom: 16 }} title="Filters">
-      <Space wrap size={[12, 12]}>
-        <Select
-          options={DATE_FIELD_OPTIONS}
-          value={filters.dateField ?? 'submitted'}
-          onChange={(dateField) => set({ dateField })}
-          style={{ width: 160 }}
-        />
-        <Select
-          allowClear
-          placeholder="Quick range"
-          options={PRESET_OPTIONS}
-          value={preset}
-          onChange={(key) => choosePreset(key)}
-          style={{ width: 140 }}
-        />
-        <DatePicker.RangePicker
-          value={[filters.from ? dayjs(filters.from) : null, filters.to ? dayjs(filters.to) : null]}
-          onChange={(range) => {
+    <Card title="Filters" className="mb-5" bodyClassName="p-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <Select options={DATE_FIELD_OPTIONS} value={filters.dateField ?? 'submitted'} onChange={(dateField) => set({ dateField })} />
+        <Select allowClear placeholder="Quick range" options={PRESET_OPTIONS} value={preset} onChange={choosePreset} />
+        <Input
+          type="date"
+          value={filters.from ?? ''}
+          onChange={(e) => {
             setPreset(undefined)
-            setRange(range?.[0], range?.[1])
+            set({ from: e.target.value || undefined })
           }}
         />
-        {select('recruiterId', 'Recruiter', asOptions(recruiters), 190)}
-        {select('teamId', 'Team', asOptions(teams))}
-        {select('employmentType', 'Employment type', EMPLOYMENT_TYPE_OPTIONS)}
-        {select('internalEntity', 'Placement entity', INTERNAL_ENTITY_OPTIONS, 200)}
-        {select('payrollCompany', 'Payroll company', PAYROLL_COMPANY_OPTIONS, 200)}
-        {select('clientState', 'Client state', US_STATE_OPTIONS, 180)}
-        {select('recruiterLocation', 'Recruiter location', RECRUITER_LOCATION_OPTIONS)}
+        <Input
+          type="date"
+          value={filters.to ?? ''}
+          onChange={(e) => {
+            setPreset(undefined)
+            set({ to: e.target.value || undefined })
+          }}
+        />
+        {pick('recruiterId', 'Recruiter', asOptions(recruiters))}
+        {pick('teamId', 'Team', asOptions(teams))}
+        {pick('employmentType', 'Employment type', EMPLOYMENT_TYPE_OPTIONS)}
+        {pick('internalEntity', 'Placement entity', INTERNAL_ENTITY_OPTIONS)}
+        {pick('payrollCompany', 'Payroll company', PAYROLL_COMPANY_OPTIONS)}
+        {pick('clientState', 'Client state', US_STATE_OPTIONS)}
+        {pick('recruiterLocation', 'Recruiter location', RECRUITER_LOCATION_OPTIONS)}
         <Button
+          variant="default"
           icon={<ClearOutlined />}
           disabled={!hasFilter}
           onClick={() => {
@@ -134,12 +124,8 @@ export default function CandidateFilters({ filters, onChange }) {
         >
           Clear
         </Button>
-      </Space>
-      <div style={{ marginTop: 8 }}>
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          The counters and the table below follow these filters. Weeks run Monday to Sunday.
-        </Typography.Text>
       </div>
+      <p className="mt-3 text-xs text-muted">The counters and the table below follow these filters. Weeks run Monday to Sunday.</p>
     </Card>
   )
 }

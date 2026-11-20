@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { App as AntApp, Button, Card, Input, Select, Space, Table, Tooltip, Typography } from 'antd'
-import { CalendarOutlined, FilterOutlined, UserAddOutlined } from '@ant-design/icons'
+import { CalendarOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons'
 import { getCandidates } from '../api/candidates.js'
 import { getDashboardSummary } from '../api/dashboard.js'
 import NameAvatar from '../components/NameAvatar.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import StatusTag from '../components/StatusTag.jsx'
+import { Button, Card, Input, Pagination, Select, Table, Tooltip, useToast } from '../ui/index.js'
 import { useAuth } from '../context/AuthContext.js'
 import { getErrorMessage } from '../utils/errors.js'
 import { formatDateTime, formatRelative } from '../utils/format.js'
 import { STATUS_OPTIONS } from '../utils/status.js'
 
-// A short line under the title explaining which rows this role gets
 const VISIBILITY_HINTS = {
   RECRUITER: 'Candidates you submitted.',
   SALES_LEAD: 'Candidates from recruiters in your team.',
@@ -24,55 +23,45 @@ const VISIBILITY_HINTS = {
   SUPER_ADMIN: 'All candidates.',
 }
 
-// The table's columns. "dataIndex" is the field to show; "render" customizes how it looks.
 const COLUMNS = [
   {
     title: 'Candidate',
     dataIndex: 'candidateName',
     render: (name, candidate) => (
-      <Space>
+      <div className="flex items-center gap-3">
         <NameAvatar name={name} />
-        <div style={{ lineHeight: 1.3 }}>
-          {/* stopPropagation: clicking the link shouldn't ALSO trigger the row click */}
-          <Link to={`/candidates/${candidate.id}`} onClick={(e) => e.stopPropagation()} style={{ fontWeight: 500 }}>
+        <div className="leading-tight">
+          <Link to={`/candidates/${candidate.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-brand hover:underline">
             {name}
           </Link>
-          <div style={{ fontSize: 12, color: '#64748b' }}>{candidate.candidatePersonalEmail}</div>
+          <div className="text-xs text-muted">{candidate.candidatePersonalEmail}</div>
         </div>
-      </Space>
+      </div>
     ),
   },
   { title: 'Client', dataIndex: 'clientName' },
   { title: 'Job title', dataIndex: 'role' },
   { title: 'Recruiter', dataIndex: 'recruiterName' },
   { title: 'Team', dataIndex: 'teamName' },
-  {
-    title: 'Status',
-    key: 'status',
-    render: (_, candidate) => <StatusTag candidate={candidate} />,
-  },
+  { title: 'Status', key: 'status', render: (_, candidate) => <StatusTag candidate={candidate} /> },
   {
     title: 'Last updated',
     dataIndex: 'updatedAt',
-    // Shows "2 days ago"; hovering shows the exact date and time
     render: (value) => (
       <Tooltip title={formatDateTime(value)}>
-        <Typography.Text type="secondary">{formatRelative(value)}</Typography.Text>
+        <span className="text-muted">{formatRelative(value)}</span>
       </Tooltip>
     ),
   },
 ]
 
-// The candidate list. "embedded" = shown inside another page (the admin dashboard),
-// so it skips the big page title.
+// The candidate list. "embedded" = shown inside the admin dashboard, so it skips the page title.
 export default function CandidateList({ embedded = false, filters = {} }) {
   const { role } = useAuth()
   const navigate = useNavigate()
-  const { message } = AntApp.useApp()
+  const toast = useToast()
 
-  // What we ask the backend for. page is 0-based, like Spring.
   const [query, setQuery] = useState({ search: '', status: '', dojToday: false, page: 0, size: 10 })
-  // How many candidates join today (shown to the Sales Lead, Sales Manager and HR)
   const [joiningToday, setJoiningToday] = useState(0)
   const showJoiningToday = !embedded && ['SALES_LEAD', 'SALES_MANAGER', 'HR'].includes(role)
 
@@ -80,41 +69,37 @@ export default function CandidateList({ embedded = false, filters = {} }) {
     if (!showJoiningToday) return
     getDashboardSummary()
       .then((summary) => setJoiningToday(summary.dojToday ?? 0))
-      .catch(() => setJoiningToday(0)) // the card is a nicety; the list still works without it
+      .catch(() => setJoiningToday(0))
   }, [showJoiningToday])
-  // What the backend sent back
+
   const [result, setResult] = useState({ content: [], totalElements: 0 })
   const [loading, setLoading] = useState(true)
 
-  // Fetch the list again whenever the query changes
   useEffect(() => {
-    // If the query changes again before this request finishes, ignore this (now outdated) answer
     let ignore = false
-
     getCandidates({ ...query, filters })
       .then((data) => {
         if (!ignore) setResult(data)
       })
       .catch((error) => {
-        if (!ignore) message.error(getErrorMessage(error, 'Could not load candidates'))
+        if (!ignore) toast.error(getErrorMessage(error, 'Could not load candidates'))
       })
       .finally(() => {
         if (!ignore) setLoading(false)
       })
-
     return () => {
       ignore = true
     }
-  }, [query, filters, message])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, filters])
 
-  // Change part of the query, e.g. updateQuery({ status: 'JOINED' })
   function updateQuery(changes) {
     setLoading(true)
     setQuery((previous) => ({ ...previous, ...changes }))
   }
 
   const newButton = role === 'RECRUITER' && (
-    <Button type="primary" icon={<UserAddOutlined />} onClick={() => navigate('/candidates/new')}>
+    <Button variant="primary" icon={<UserAddOutlined />} onClick={() => navigate('/candidates/new')}>
       New candidate
     </Button>
   )
@@ -123,70 +108,53 @@ export default function CandidateList({ embedded = false, filters = {} }) {
     <>
       {!embedded && <PageHeader title="Candidates" subtitle={VISIBILITY_HINTS[role]} extra={newButton} />}
 
-      {/* "Joining today": a card for the Sales Lead, Sales Manager and HR when someone's Date of Joining is today */}
       {showJoiningToday && joiningToday > 0 && (
-        <Card
-          style={{ marginBottom: 16, borderColor: '#4f46e5', background: '#eef2ff' }}
-          styles={{ body: { display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' } }}
-        >
-          <CalendarOutlined style={{ fontSize: 28, color: '#4f46e5' }} />
-          <div style={{ flex: '1 1 240px' }}>
-            <Typography.Text strong style={{ fontSize: 16 }}>
+        <Card className="mb-4 border-brand/30 bg-brand-soft/50" bodyClassName="flex flex-wrap items-center gap-4 p-4">
+          <CalendarOutlined className="text-2xl text-brand" />
+          <div className="flex-1 basis-60">
+            <p className="font-semibold text-ink">
               {joiningToday === 1 ? '1 candidate joins today' : `${joiningToday} candidates join today`}
-            </Typography.Text>
-            <br />
-            <Typography.Text type="secondary">Today is the Date of Joining. Check and approve it if you haven't yet.</Typography.Text>
+            </p>
+            <p className="text-sm text-muted">Today is the Date of Joining. Check and approve it if you haven&apos;t yet.</p>
           </div>
-          <Button
-            type={query.dojToday ? 'default' : 'primary'}
-            onClick={() => updateQuery({ dojToday: !query.dojToday, page: 0 })}
-          >
+          <Button variant={query.dojToday ? 'default' : 'primary'} onClick={() => updateQuery({ dojToday: !query.dojToday, page: 0 })}>
             {query.dojToday ? 'Show all candidates' : 'Show who joins today'}
           </Button>
         </Card>
       )}
 
-      <Card title={embedded ? 'All candidates' : null}>
-        {/* Filters: side by side on wide screens, stacked full-width on phones */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-          {/* Searches when you press Enter or click the search icon; a new search goes back to page 1 */}
-          <Input.Search
+      <Card title={embedded ? 'All candidates' : null} bodyClassName="p-4">
+        <div className="mb-4 flex flex-wrap gap-3">
+          <Input
+            className="max-w-sm flex-1"
+            prefix={<SearchOutlined />}
             placeholder="Search name, client, role, recruiter"
-            allowClear
-            onSearch={(search) => updateQuery({ search, page: 0 })}
-            style={{ flex: '1 1 260px', maxWidth: 380 }}
+            defaultValue={query.search}
+            onKeyDown={(e) => e.key === 'Enter' && updateQuery({ search: e.target.value, page: 0 })}
           />
           <Select
+            className="w-full sm:w-64"
             placeholder="All statuses"
-            prefix={<FilterOutlined style={{ color: '#94a3b8' }} />}
             allowClear
             options={STATUS_OPTIONS}
-            // allowClear sets the value to undefined; we send '' meaning "no filter"
+            value={query.status || undefined}
             onChange={(status) => updateQuery({ status: status ?? '', page: 0 })}
-            style={{ flex: '1 1 220px', maxWidth: 300 }}
           />
         </div>
 
         <Table
-          rowKey="id"
           columns={COLUMNS}
-          dataSource={result.content}
+          data={result.content}
           loading={loading}
-          // The whole row opens the candidate
-          rowClassName="clickable-row"
-          onRow={(candidate) => ({ onClick: () => navigate(`/candidates/${candidate.id}`) })}
-          // Scroll sideways on small screens instead of squashing the columns
-          scroll={{ x: 'max-content' }}
-          pagination={{
-            current: query.page + 1, // antd counts pages from 1, Spring from 0
-            pageSize: query.size,
-            total: result.totalElements,
-            showSizeChanger: true,
-            showTotal: (total) => `${total} candidates`,
-          }}
-          onChange={(pagination) =>
-            updateQuery({ page: pagination.current - 1, size: pagination.pageSize })
-          }
+          onRowClick={(candidate) => navigate(`/candidates/${candidate.id}`)}
+          empty="No candidates to show."
+        />
+        <Pagination
+          current={query.page}
+          pageSize={query.size}
+          total={result.totalElements}
+          label="candidates"
+          onChange={(p, size) => updateQuery({ page: p, size })}
         />
       </Card>
     </>

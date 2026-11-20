@@ -47,7 +47,7 @@ The deployable pieces and how they communicate.
 flowchart LR
     B["Web browser"]
     subgraph Server["Server (production: behind nginx with HTTPS)"]
-        FE["Frontend SPA<br/>React 19 + Vite 8 + Ant Design 6<br/>static files (dist/)"]
+        FE["Frontend SPA<br/>React 19 + Vite 8 + Tailwind CSS<br/>static files (dist/)"]
         API["Backend REST API<br/>Spring Boot 4.1 / Java 17<br/>port 5000"]
         LOG[["logs/<br/>oneintellectt.log<br/>security.log"]]
     end
@@ -65,7 +65,7 @@ flowchart LR
 
 | Container | Technology | Responsibility |
 |---|---|---|
-| Frontend | React 19, React Router 7, Ant Design 6, axios, dayjs; built by Vite 8 | Screens, forms, client-side checks (convenience only), session idle warning |
+| Frontend | React 19, React Router 7, Tailwind CSS (hand-built UI kit), axios, dayjs; built by Vite 8 | Screens, forms, client-side checks (convenience only), session idle warning |
 | Backend | Spring Boot 4.1.1 (Web MVC, Security 7, Data JPA / Hibernate 7, Envers, Mail), jjwt 0.12 | All business rules, authorization, workflow, email, audit, security logging |
 | Database | PostgreSQL 16 | Operational data and full change history |
 | Mail | Any SMTP (Gmail in development) | Delivering notifications |

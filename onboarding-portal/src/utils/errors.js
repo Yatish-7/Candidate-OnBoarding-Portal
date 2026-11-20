@@ -18,6 +18,20 @@ export function getErrorMessage(error, fallback = 'Something went wrong') {
   return fallback
 }
 
+// Turns the backend's field errors into a { fieldName: message } map for our own
+// Tailwind forms. Returns null when there are none.
+// errors: [{ field: "candidatePersonalEmail", message: "Invalid email" }]
+export function fieldErrorMap(error) {
+  const fieldErrors = error.response?.data?.errors ?? []
+  if (fieldErrors.length === 0) return null
+  const map = {}
+  for (const { field, message } of fieldErrors) {
+    const name = field.split(/[.[\]]+/).filter(Boolean)[0]
+    if (name && !map[name]) map[name] = message
+  }
+  return map
+}
+
 // Shows the backend's field errors under the matching form inputs.
 // errors: [{ field: "candidatePersonalEmail", message: "Invalid email" }]
 // Spring names list fields like "interviewers[0].email"; antd wants ['interviewers', 0, 'email'].

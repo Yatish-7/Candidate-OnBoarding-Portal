@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, loadEnv } from 'vite'
 
 // Content-Security-Policy for the built app: the browser only runs our own scripts and
@@ -16,7 +17,7 @@ function contentSecurityPolicy(apiBaseUrl) {
   const policy = [
     "default-src 'self'",
     "script-src 'self'",
-    // antd injects its styles at runtime, so inline styles must be allowed
+    // Tailwind's stylesheet plus a few inline style objects need 'unsafe-inline' for styles
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data:",
@@ -38,6 +39,9 @@ function contentSecurityPolicy(apiBaseUrl) {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), contentSecurityPolicy(env.VITE_API_BASE_URL)],
+    // Always run on 5173 (fail loudly instead of silently drifting to 5174/5175)
+    server: { port: 5173, strictPort: true },
+    preview: { port: 5173, strictPort: true },
+    plugins: [react(), tailwindcss(), contentSecurityPolicy(env.VITE_API_BASE_URL)],
   }
 })
